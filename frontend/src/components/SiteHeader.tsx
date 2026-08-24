@@ -1,8 +1,8 @@
 import { Link, NavLink } from "react-router-dom";
 
 const links = [
-  { href: "/#about-aac", label: "What is AAC?" },
-  { href: "/#join", label: "Join beta" },
+  { href: "/#join", label: "Join" },
+  { href: "/#app", label: "App" },
   { href: "/feedback", label: "Feedback" },
 ];
 

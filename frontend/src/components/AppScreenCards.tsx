@@ -63,10 +63,7 @@ export default function AppScreenCards() {
       <Reveal>
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Inside the app</p>
         <h2 className="display mt-3 text-4xl text-ink sm:text-5xl">AAC Sinhala on a phone.</h2>
-        <p className="mt-4 max-w-2xl text-lg text-ink/75">
-          Real screens from the app, shown in iPhone-style frames so testers can see the boards, cards, and
-          settings before they install.
-        </p>
+        <p className="mt-4 max-w-2xl text-lg text-ink/75">Real screens from AAC Sinhala.</p>
       </Reveal>
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {APP_SCREENS.map((screen, index) => (

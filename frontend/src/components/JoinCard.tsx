@@ -236,18 +236,18 @@ export default function JoinCard() {
   return (
     <section id="join" className="scroll-mt-28" aria-labelledby="join-title">
       <div className="glass relative overflow-hidden rounded-[2rem] p-6 sm:p-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Closed testing</p>
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Join</p>
         <h2 id="join-title" className="display mt-3 text-4xl text-ink sm:text-5xl">
-          Join the AAC Sinhala Beta
+          Join with your Play Store Gmail
         </h2>
-        <p className="mt-4 max-w-2xl text-lg text-ink/80">
-          Help us test a communication-support app designed to make AAC more accessible for children and families.
+        <p className="mt-4 max-w-2xl rounded-2xl bg-clay/10 px-4 py-3 text-base font-semibold text-ink">
+          {USER_MESSAGES.playStoreEveryone}
         </p>
 
         <form className="mt-8 space-y-4" onSubmit={onSubmit} noValidate>
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold text-ink">
-              Your Google account email
+              {USER_MESSAGES.playStoreEmailLabel}
             </label>
             <input
               id={emailId}
@@ -259,10 +259,13 @@ export default function JoinCard() {
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={error ? true : undefined}
-              aria-describedby={error ? errorId : undefined}
+              aria-describedby={error ? `${errorId} ${emailId}-hint` : `${emailId}-hint`}
               className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3.5 text-base text-ink shadow-inner outline-none"
               placeholder="you@gmail.com"
             />
+            <p id={`${emailId}-hint`} className="mt-2 text-sm text-ink/70">
+              {USER_MESSAGES.playStoreEmailHint}
+            </p>
             {error ? (
               <p id={errorId} className="mt-2 text-sm font-medium text-clay-dark" role="alert">
                 {error}

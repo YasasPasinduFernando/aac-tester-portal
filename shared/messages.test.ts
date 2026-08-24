@@ -2,6 +2,12 @@ import { describe, expect, it } from "vitest";
 import { GROUP_JOIN_WALKTHROUGH, GUIDE_SHOTS, USER_MESSAGES } from "./types";
 
 describe("tester group join copy", () => {
+  it("tells everyone to use the Play Store account", () => {
+    expect(USER_MESSAGES.playStoreEveryone).toBe(
+      "Everyone must use the Google account they use on Google Play.",
+    );
+  });
+
   it("uses the exact Play Store account warning", () => {
     expect(USER_MESSAGES.playAccountImportant).toBe(
       "Please use the same Google account you use on Google Play to join the tester group.",

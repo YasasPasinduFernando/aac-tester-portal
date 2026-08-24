@@ -58,7 +58,12 @@ export const USER_MESSAGES = {
   rateLimited: "Too many requests. Please wait a few minutes and try again.",
   almostReady: "You're almost ready!",
   sameAccount: "Please use the same Google account that you registered with.",
-  deviceAccount: "Use the same Google account on your Android device.",
+  deviceAccount: "Use the same Play Store account on your Android device.",
+  playStoreEveryone:
+    "Everyone must use the Google account they use on Google Play.",
+  playStoreEmailLabel: "Play Store Gmail",
+  playStoreEmailHint:
+    "Enter the same Gmail that is signed in on Google Play.",
   joinGroupHint: "Open the group and tap Join group. Use your Play Store account.",
   joinGroupModalTitle: "Join the AAC Sinhala Tester Group",
   joinGroupModalLead: "You're one step away from joining the AAC Sinhala beta.",

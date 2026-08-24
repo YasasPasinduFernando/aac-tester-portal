@@ -100,8 +100,8 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
             </button>
           </div>
 
-          <p id={descId} className="mt-3 text-base text-ink/80 sm:text-lg">
-            {USER_MESSAGES.joinGroupModalLead}
+          <p id={descId} className="mt-3 text-base font-semibold text-ink">
+            {USER_MESSAGES.playStoreEveryone}
           </p>
 
           <div className="mt-5">
@@ -120,11 +120,7 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
           >
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-clay-dark">Important</p>
             <p className="mt-2 text-base font-semibold text-ink">{USER_MESSAGES.playAccountImportant}</p>
-            <p className="mt-3 inline-flex rounded-full bg-ink px-3 py-1.5 text-sm font-semibold text-gold">
-              {USER_MESSAGES.usePlayStoreAccountHeading}
-            </p>
-            <p className="mt-2 text-sm font-medium text-ink/90">{USER_MESSAGES.usePlayStoreAccount}</p>
-            <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.sameAccountPlayAndGroup}</p>
+            <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.playStoreEmailHint}</p>
           </div>
 
           <div className="mt-4 rounded-2xl border border-ink/10 bg-foam px-4 py-3">
