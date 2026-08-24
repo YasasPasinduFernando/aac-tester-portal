@@ -47,10 +47,8 @@ export const GUIDE_SHOTS = {
 
 export const GROUP_JOIN_WALKTHROUGH = [
   "Open the tester group",
-  "Make sure you're signed in with the email above",
   'Tap "Join group"',
-  "Return to this page",
-  'Tap "Check My Access"',
+  "Come back and tap Check My Access",
 ] as const;
 
 export const USER_MESSAGES = {

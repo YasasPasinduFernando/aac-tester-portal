@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent } from "react";
-import { FEEDBACK_TYPES, USER_MESSAGES } from "@shared/types";
+import { FEEDBACK_TYPES } from "@shared/types";
 import { isValidEmail, normalizeEmail } from "@shared/email";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
@@ -62,10 +62,9 @@ export default function FeedbackPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main id="main" className="mx-auto max-w-3xl px-4 py-16">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Private feedback</p>
-        <h1 className="display mt-3 text-5xl text-ink sm:text-6xl">Tell us what to fix.</h1>
-        <p className="mt-4 text-lg text-ink/80">
-          {USER_MESSAGES.playStoreEveryone} Use the Play Store Gmail that installed the app when you can.
+        <h1 className="display text-4xl text-ink sm:text-5xl">Feedback</h1>
+        <p className="mt-3 max-w-md text-base text-ink/80">
+          Tell us what to fix. Use the Play Store Gmail that installed the app when you can.
         </p>
 
         <form className="glass mt-10 space-y-5 rounded-[2rem] p-6 sm:p-8" onSubmit={onSubmit} noValidate>

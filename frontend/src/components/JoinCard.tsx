@@ -1,8 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { isValidEmail, normalizeEmail } from "@shared/email";
-import { GUIDE_SHOTS, USER_MESSAGES } from "@shared/types";
+import { USER_MESSAGES } from "@shared/types";
 import GroupJoinModal from "./GroupJoinModal";
-import GuideShot from "./GuideShot";
 
 interface AccessResponse {
   outcome: "continue" | "invalid_email" | "rate_limited" | "unavailable";
@@ -82,7 +81,9 @@ export default function JoinCard() {
   >(saved.accessChecked ? (saved.result?.membershipVerification ?? null) : saved.membershipVerified ? "verified" : null);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
   const joinGroupButtonRef = useRef<HTMLButtonElement>(null);
-  const checkAccessRef = useRef<HTMLElement>(null);
+  const checkAccessRef = useRef<HTMLDivElement>(null);
+  const lockedEmail = saved.submitted && saved.result?.outcome === "continue" ? saved.email : "";
+  const [requestEmail, setRequestEmail] = useState(lockedEmail);
 
   useEffect(() => {
     if (!email) return;
@@ -121,6 +122,7 @@ export default function JoinCard() {
       const payload = (await response.json()) as AccessResponse;
       setEmail(normalized);
       setResult(payload);
+      if (payload.outcome === "continue") setRequestEmail(normalized);
       setGroupOpened(payload.groupJoinStarted);
       setPlayOpened(payload.playJoinStarted);
       setMembershipVerified(payload.membershipVerified);
@@ -232,19 +234,19 @@ export default function JoinCard() {
   const ready = membershipVerified;
   const notMember = membershipState === "not_member";
   const showPlay = ready || (groupOpened && accessChecked && membershipState === "unavailable");
+  const emailDirty = submitted && normalizeEmail(email) !== normalizeEmail(requestEmail);
 
   return (
-    <section id="join" className="scroll-mt-28" aria-labelledby="join-title">
-      <div className="glass relative overflow-hidden rounded-[2rem] p-6 sm:p-10">
-        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Join</p>
-        <h2 id="join-title" className="display mt-3 text-4xl text-ink sm:text-5xl">
-          Join with your Play Store Gmail
-        </h2>
-        <p className="mt-4 max-w-2xl rounded-2xl bg-clay/10 px-4 py-3 text-base font-semibold text-ink">
-          {USER_MESSAGES.playStoreEveryone}
-        </p>
+    <section id="join" className="scroll-mt-24" aria-labelledby="join-title">
+      <h1 id="join-title" className="display text-center text-4xl text-ink sm:text-5xl">
+        Join AAC Sinhala
+      </h1>
+      <p className="mx-auto mt-3 max-w-md text-center text-base font-semibold text-ink">
+        {USER_MESSAGES.playStoreEveryone}
+      </p>
 
-        <form className="mt-8 space-y-4" onSubmit={onSubmit} noValidate>
+      <div className="glass mt-8 rounded-[1.75rem] p-5 sm:p-8">
+        <form className="space-y-4" onSubmit={onSubmit} noValidate>
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold text-ink">
               {USER_MESSAGES.playStoreEmailLabel}
@@ -272,147 +274,82 @@ export default function JoinCard() {
               </p>
             ) : null}
           </div>
-          <button
-            type="submit"
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70 sm:w-auto"
-            disabled={loading}
-          >
-            {loading ? "Saving your request…" : "Get Test Access"}
-          </button>
+          {!submitted || emailDirty ? (
+            <button
+              type="submit"
+              className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70"
+              disabled={loading}
+            >
+              {loading ? "Saving…" : submitted ? "Update email" : "Continue"}
+            </button>
+          ) : null}
         </form>
 
-        <div id={statusId} className="mt-8 space-y-5" aria-live="polite">
+        <div id={statusId} className={submitted ? "mt-6 space-y-4" : undefined} aria-live="polite">
           {submitted ? (
             <>
-              <ol className="grid gap-3 sm:grid-cols-3" aria-label="Onboarding steps">
-                <li
-                  className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${ready ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}
-                >
-                  1 → Join tester group
-                </li>
-                <li className="rounded-2xl bg-mist/70 px-4 py-4 text-center text-sm font-semibold text-ink">
-                  2 → Join Google Play test
-                </li>
-                <li className="rounded-2xl bg-mist/70 px-4 py-4 text-center text-sm font-semibold text-ink">
-                  3 → Install AAC-Sinhala
-                </li>
-              </ol>
-
-              <article className="rounded-3xl bg-ink px-6 py-6 text-sand">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">STEP 1</p>
-                <h3 className="display mt-2 text-3xl text-foam">Join the tester group</h3>
-                <p className="mt-3 text-sand/85">{USER_MESSAGES.joinGroupHint}</p>
-                <p className="mt-3 rounded-2xl bg-gold/15 px-4 py-3 text-sm font-semibold text-gold">
-                  {USER_MESSAGES.usePlayStoreAccountHeading}
-                  <span className="mt-1 block font-medium text-sand/85">
-                    {USER_MESSAGES.sameAccountPlayAndGroup}
-                  </span>
-                </p>
-                <div className="mt-5">
-                  <GuideShot
-                    src={GUIDE_SHOTS.joinGroup.src}
-                    alt={GUIDE_SHOTS.joinGroup.alt}
-                    caption={GUIDE_SHOTS.joinGroup.caption}
-                    hint={GUIDE_SHOTS.joinGroup.hint}
-                    dark
-                  />
-                </div>
+              <div className="rounded-2xl bg-ink px-5 py-5 text-sand">
+                <p className="text-sm font-semibold text-gold">1. Join the group</p>
+                <p className="mt-2 text-sand/85">Open the group and tap Join group.</p>
                 <button
                   ref={joinGroupButtonRef}
                   type="button"
-                  className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 text-base font-semibold text-ink hover:bg-sand sm:w-auto"
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gold px-5 font-semibold text-ink hover:bg-sand"
                   onClick={() => setShowGroupHelp(true)}
                   aria-haspopup="dialog"
                   aria-expanded={showGroupHelp}
                 >
-                  Join Tester Group
+                  Open Tester Group
                   <span aria-hidden="true">↗</span>
                 </button>
-                <p className="mt-3 text-sm text-sand/70">{USER_MESSAGES.groupsNewTabHint}</p>
-              </article>
+              </div>
 
-              <article
-                ref={checkAccessRef}
-                id="check-access"
-                className="rounded-3xl border border-ink/10 bg-foam px-6 py-6"
-              >
-                <h3 className="display text-3xl text-ink">{USER_MESSAGES.alreadyJoined}</h3>
-                <p className="mt-3 text-ink/80">{USER_MESSAGES.afterJoinCheck}</p>
+              <div ref={checkAccessRef} id="check-access" className="rounded-2xl border border-ink/10 bg-foam px-5 py-5">
+                <p className="text-sm font-semibold text-ink">2. Check access</p>
                 {ready ? (
-                  <p className="mt-4 text-lg font-semibold text-teal-dark" role="status">
+                  <p className="mt-2 text-base font-semibold text-teal-dark" role="status">
                     ✓ {USER_MESSAGES.inTheGroup}
                   </p>
                 ) : notMember ? (
-                  <div className="mt-4 rounded-2xl border border-clay/30 bg-clay/10 px-4 py-4" role="status">
-                    <p className="font-semibold text-clay-dark">{USER_MESSAGES.checkAccessNotDetected}</p>
-                    <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.checkAccessRetry}</p>
-                  </div>
+                  <p className="mt-2 text-sm text-ink/80" role="status">
+                    {USER_MESSAGES.checkAccessNotDetected} {USER_MESSAGES.checkAccessRetry}
+                  </p>
                 ) : checkMessage ? (
-                  <p className="mt-4 text-sm text-ink/80" role="status">
+                  <p className="mt-2 text-sm text-ink/80" role="status">
                     {checkMessage}
                   </p>
-                ) : null}
+                ) : (
+                  <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.afterJoinCheck}</p>
+                )}
                 {!ready ? (
                   <button
                     type="button"
-                    className="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-full border-2 border-teal px-6 font-semibold text-teal hover:bg-teal hover:text-white sm:w-auto"
+                    className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full border-2 border-clay px-5 font-semibold text-clay hover:bg-clay hover:text-white"
                     onClick={() => void checkAccess()}
                     disabled={checking}
                   >
                     {checking ? "Checking…" : "Check My Access"}
                   </button>
-                ) : (
-                  <p className="mt-4 font-semibold text-ink">{USER_MESSAGES.nextPlayTest}</p>
-                )}
-              </article>
+                ) : null}
+              </div>
 
               {showPlay && result.playJoinUrl ? (
-                <article className="rounded-3xl border border-ink/10 bg-foam px-6 py-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal">STEP 2</p>
-                  <h3 className="display mt-2 text-3xl text-ink">Join the Google Play test</h3>
-                  <p className="mt-3 text-ink/80">
-                    {ready
-                      ? "Open the closed test and choose Join the test."
-                      : "We could not confirm membership automatically. If you already tapped Join group, continue on Google Play with the same account."}
-                  </p>
-                  <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.sameAccountPlayAndGroup}</p>
-                  <div className="mt-5">
-                    <GuideShot
-                      src={GUIDE_SHOTS.becomeTester.src}
-                      alt={GUIDE_SHOTS.becomeTester.alt}
-                      caption={GUIDE_SHOTS.becomeTester.caption}
-                      hint={GUIDE_SHOTS.becomeTester.hint}
-                    />
-                  </div>
+                <div className="rounded-2xl border border-ink/10 bg-foam px-5 py-5">
+                  <p className="text-sm font-semibold text-ink">3. Join Play test, then install</p>
+                  <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.deviceAccount}</p>
                   <ExternalButton
-                    className="mt-5 min-h-14 w-full bg-clay text-white hover:bg-clay-dark sm:w-auto"
+                    className="mt-4 min-h-12 w-full bg-clay text-white hover:bg-clay-dark"
                     onClick={() => void openPlayTest()}
                     label="Join Google Play Test"
                   />
-                  <p className="mt-4 text-sm text-ink/70">{USER_MESSAGES.deviceAccount}</p>
-                </article>
-              ) : null}
-
-              {showPlay && result.playStoreUrl ? (
-                <article className="rounded-3xl bg-teal px-6 py-6 text-sand">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">STEP 3</p>
-                  <h3 className="display mt-2 text-3xl text-foam">Install AAC-Sinhala</h3>
-                  <p className="mt-3 text-sand/90">{USER_MESSAGES.installHint}</p>
-                  <div className="mt-5">
-                    <GuideShot
-                      src={GUIDE_SHOTS.installApp.src}
-                      alt={GUIDE_SHOTS.installApp.alt}
-                      caption={GUIDE_SHOTS.installApp.caption}
-                      hint={GUIDE_SHOTS.installApp.hint}
-                      dark
+                  {result.playStoreUrl ? (
+                    <ExternalButton
+                      className="mt-3 min-h-12 w-full border-2 border-ink/15 bg-white text-ink hover:bg-mist/60"
+                      onClick={openInstall}
+                      label="Install AAC-Sinhala"
                     />
-                  </div>
-                  <ExternalButton
-                    className="mt-5 min-h-14 w-full bg-foam text-teal-dark hover:bg-sand sm:w-auto"
-                    onClick={openInstall}
-                    label="Install AAC-Sinhala"
-                  />
-                </article>
+                  ) : null}
+                </div>
               ) : null}
             </>
           ) : null}

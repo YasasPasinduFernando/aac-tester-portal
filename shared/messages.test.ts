@@ -28,10 +28,8 @@ describe("tester group join copy", () => {
   it("walks through join, account check, and return", () => {
     expect(GROUP_JOIN_WALKTHROUGH).toEqual([
       "Open the tester group",
-      "Make sure you're signed in with the email above",
       'Tap "Join group"',
-      "Return to this page",
-      'Tap "Check My Access"',
+      "Come back and tap Check My Access",
     ]);
   });
 
