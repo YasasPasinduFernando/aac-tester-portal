@@ -23,6 +23,7 @@ interface SessionState {
   playOpened: boolean;
   installOpened: boolean;
   membershipVerified: boolean;
+  accessChecked: boolean;
   result: AccessResponse | null;
 }
 
@@ -50,6 +51,7 @@ function emptySession(): SessionState {
     playOpened: false,
     installOpened: false,
     membershipVerified: false,
+    accessChecked: false,
     result: null,
   };
 }
@@ -73,9 +75,10 @@ export default function JoinCard() {
   const [playOpened, setPlayOpened] = useState(saved.playOpened);
   const [installOpened, setInstallOpened] = useState(saved.installOpened);
   const [membershipVerified, setMembershipVerified] = useState(saved.membershipVerified);
+  const [accessChecked, setAccessChecked] = useState(saved.accessChecked);
   const [membershipState, setMembershipState] = useState<
     "verified" | "not_member" | "unavailable" | null
-  >(saved.result?.membershipVerification ?? null);
+  >(saved.accessChecked ? (saved.result?.membershipVerification ?? null) : saved.membershipVerified ? "verified" : null);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
   const joinGroupButtonRef = useRef<HTMLButtonElement>(null);
   const checkAccessRef = useRef<HTMLElement>(null);
@@ -89,9 +92,10 @@ export default function JoinCard() {
       playOpened,
       installOpened,
       membershipVerified,
+      accessChecked,
       result,
     });
-  }, [email, result, groupOpened, playOpened, installOpened, membershipVerified]);
+  }, [email, result, groupOpened, playOpened, installOpened, membershipVerified, accessChecked]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -119,7 +123,13 @@ export default function JoinCard() {
       setGroupOpened(payload.groupJoinStarted);
       setPlayOpened(payload.playJoinStarted);
       setMembershipVerified(payload.membershipVerified);
-      setMembershipState(payload.membershipVerification);
+      if (payload.membershipVerified) {
+        setMembershipState("verified");
+        setAccessChecked(true);
+      } else {
+        setMembershipState(null);
+        setAccessChecked(false);
+      }
       if (payload.outcome === "invalid_email" || payload.outcome === "rate_limited") {
         setError(payload.message);
       }
@@ -195,6 +205,7 @@ export default function JoinCard() {
       };
       setMembershipVerified(payload.membershipVerified);
       setMembershipState(payload.membershipVerification);
+      setAccessChecked(true);
       setCheckMessage(payload.message);
       if (payload.ok && result) {
         setResult({
@@ -208,6 +219,7 @@ export default function JoinCard() {
       }
     } catch {
       setMembershipState("unavailable");
+      setAccessChecked(true);
       setCheckMessage(USER_MESSAGES.checkAccessUnavailable);
       setMembershipVerified(false);
     } finally {
@@ -218,7 +230,7 @@ export default function JoinCard() {
   const submitted = result?.outcome === "continue";
   const ready = membershipVerified;
   const notMember = membershipState === "not_member";
-  const showPlay = ready || (groupOpened && membershipState === "unavailable");
+  const showPlay = ready || (groupOpened && accessChecked && membershipState === "unavailable");
 
   return (
     <section id="join" className="scroll-mt-28" aria-labelledby="join-title">
