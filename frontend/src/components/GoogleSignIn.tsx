@@ -30,17 +30,26 @@ function randomNonce(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+function buttonWidth(host: HTMLElement): number {
+  const width = Math.floor(host.getBoundingClientRect().width);
+  return Math.min(400, Math.max(240, width || 320));
+}
+
 export default function GoogleSignIn() {
   const { googleClientId, configured, error, signInWithCredential } = useAuth();
   const hostRef = useRef<HTMLDivElement>(null);
   const nonceRef = useRef(randomNonce());
   const [status, setStatus] = useState("");
+  const [buttonReady, setButtonReady] = useState(false);
   const statusId = useId();
 
   useEffect(() => {
     if (!configured || !googleClientId) return;
     const clientId = googleClientId;
+    const host = hostRef.current;
+    if (!host) return;
     let cancelled = false;
+    let observer: ResizeObserver | null = null;
 
     async function start() {
       try {
@@ -58,16 +67,32 @@ export default function GoogleSignIn() {
             void signInWithCredential(response.credential, nonce);
           },
         });
-        hostRef.current.innerHTML = "";
-        window.google.accounts.id.renderButton(hostRef.current, {
-          theme: "outline",
-          size: "large",
-          type: "standard",
-          shape: "pill",
-          text: "continue_with",
-          logo_alignment: "left",
-          width: Math.min(400, Math.max(280, Math.floor(hostRef.current.clientWidth) || 320)),
-        });
+
+        let lastWidth = 0;
+        function draw() {
+          if (cancelled || !hostRef.current || !window.google?.accounts.id) return;
+          const width = buttonWidth(hostRef.current);
+          if (Math.abs(width - lastWidth) < 8 && hostRef.current.childElementCount > 0) return;
+          lastWidth = width;
+          hostRef.current.innerHTML = "";
+          window.google.accounts.id.renderButton(hostRef.current, {
+            theme: "filled_blue",
+            size: "large",
+            type: "standard",
+            shape: "pill",
+            text: "continue_with",
+            logo_alignment: "left",
+            width,
+          });
+          setButtonReady(Boolean(hostRef.current.querySelector("iframe, div[role='button'], button")));
+        }
+
+        draw();
+        observer = new ResizeObserver(() => draw());
+        observer.observe(hostRef.current);
+        window.setTimeout(() => {
+          if (!cancelled) setButtonReady(true);
+        }, 1200);
       } catch {
         if (!cancelled) setStatus(USER_MESSAGES.googleSignInFailed);
       }
@@ -76,6 +101,7 @@ export default function GoogleSignIn() {
     void start();
     return () => {
       cancelled = true;
+      observer?.disconnect();
     };
   }, [configured, googleClientId, signInWithCredential]);
 
@@ -86,11 +112,18 @@ export default function GoogleSignIn() {
           {USER_MESSAGES.googleSignInUnavailable}
         </p>
       ) : (
-        <div
-          ref={hostRef}
-          className="flex min-h-14 w-full justify-center"
-          aria-label="Continue with Google"
-        />
+        <div className="relative min-h-14 w-full">
+          {!buttonReady ? (
+            <p className="absolute inset-0 flex items-center justify-center text-sm text-ink/60">
+              Loading Google…
+            </p>
+          ) : null}
+          <div
+            ref={hostRef}
+            className="flex min-h-14 w-full justify-center overflow-hidden"
+            aria-label="Continue with Google"
+          />
+        </div>
       )}
       {error || status ? (
         <p id={statusId} className="mt-3 text-sm font-medium text-clay-dark" role="alert">

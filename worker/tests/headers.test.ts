@@ -5,8 +5,9 @@ import { playJoinUrl, playStoreUrl, type Env } from "../src/env";
 describe("security headers for Google Identity Services", () => {
   it("allows the official Google Identity Services origins", () => {
     const csp = SECURITY_HEADERS["Content-Security-Policy"];
-    expect(csp).toContain("https://accounts.google.com");
-    expect(csp).toContain("frame-src https://accounts.google.com");
+    expect(csp).toContain("https://accounts.google.com/gsi/client");
+    expect(csp).toContain("frame-src https://accounts.google.com/gsi/");
+    expect(csp).toContain("connect-src 'self' https://accounts.google.com/gsi/");
     expect(SECURITY_HEADERS["Cross-Origin-Opener-Policy"]).toBe("same-origin-allow-popups");
   });
 });
