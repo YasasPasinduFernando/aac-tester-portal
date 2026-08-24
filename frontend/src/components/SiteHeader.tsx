@@ -12,9 +12,13 @@ export default function SiteHeader() {
       <div className="mx-auto max-w-lg px-4 pt-3">
         <div className="glass flex items-center justify-between gap-3 rounded-full px-3 py-2">
           <Link to="/" className="flex min-w-0 items-center gap-2 no-underline">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink" aria-hidden="true">
-              <span className="h-2 w-2 rounded-full bg-gold" />
-            </span>
+            <img
+              src="/aac-logo.png"
+              alt=""
+              width={36}
+              height={36}
+              className="h-9 w-9 shrink-0"
+            />
             <span className="text-sm font-semibold text-ink">AAC Sinhala</span>
           </Link>
           {user ? (

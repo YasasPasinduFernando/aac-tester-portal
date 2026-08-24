@@ -41,7 +41,7 @@ export default function PhoneFrame({
       <div className="iphone-bezel">
         <span className="iphone-island" aria-hidden="true" />
         <div className="iphone-screen">
-          <img src={src} alt={alt} className="h-full w-full object-cover object-top" />
+          <img src={src} alt={alt} />
         </div>
         <span className="iphone-home" aria-hidden="true" />
       </div>

@@ -189,9 +189,18 @@ body {
 
 .iphone-screen {
   position: relative;
-  aspect-ratio: 9 / 19.5;
   overflow: hidden;
   background: #0b1220;
+  padding: 1.55rem 0.16rem 0.72rem;
+}
+
+.iphone-screen img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0.45rem;
+  object-fit: contain;
+  object-position: center top;
 }
 
 .iphone-island {
