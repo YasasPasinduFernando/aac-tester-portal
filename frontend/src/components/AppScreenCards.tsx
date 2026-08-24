@@ -31,12 +31,17 @@ export function AppPhoneCluster({ compact = false }: { compact?: boolean }) {
   const [left, center, right] = [APP_SCREENS[2], APP_SCREENS[0], APP_SCREENS[1]];
   return (
     <div
-      className={`flex items-end justify-center gap-5 sm:gap-6 ${compact ? "py-2" : "py-4"}`}
+      className={`relative flex items-end justify-center pb-8 ${compact ? "min-h-[14.5rem] sm:min-h-[16rem]" : "min-h-[18rem] sm:min-h-[26rem]"}`}
       aria-label="AAC Sinhala app screens in iPhone frames"
     >
-      <PhoneFrame src={left.src} alt={left.alt} size="sm" className="hidden -rotate-3 md:block" />
-      <PhoneFrame src={center.src} alt={center.alt} size="lg" className="z-10" />
-      <PhoneFrame src={right.src} alt={right.alt} size="sm" className="hidden rotate-3 md:block" />
+      <PhoneFrame src={left.src} alt={left.alt} size="sm" className="translate-y-4 -rotate-6 opacity-90 sm:translate-y-6" />
+      <PhoneFrame
+        src={center.src}
+        alt={center.alt}
+        size="lg"
+        className="z-10 -mx-3 -translate-y-1 sm:-mx-6 sm:-translate-y-2"
+      />
+      <PhoneFrame src={right.src} alt={right.alt} size="sm" className="translate-y-4 rotate-6 opacity-90 sm:translate-y-6" />
     </div>
   );
 }

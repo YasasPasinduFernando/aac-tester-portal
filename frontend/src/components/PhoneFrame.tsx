@@ -19,7 +19,11 @@ export default function PhoneFrame({
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const width =
-    size === "sm" ? "w-[7.5rem] sm:w-[9rem]" : size === "lg" ? "w-[11.5rem] sm:w-[14rem]" : "w-[9.5rem] sm:w-[11.5rem]";
+    size === "sm"
+      ? "w-[5.5rem] sm:w-[7.5rem] md:w-[9rem]"
+      : size === "lg"
+        ? "w-[7.75rem] sm:w-[11.5rem] md:w-[14rem]"
+        : "w-[6.5rem] sm:w-[9.5rem] md:w-[11.5rem]";
 
   useEffect(() => {
     if (!open) return;
@@ -39,7 +43,6 @@ export default function PhoneFrame({
       <span className="iphone-side iphone-side-left" aria-hidden="true" />
       <span className="iphone-side iphone-side-right" aria-hidden="true" />
       <div className="iphone-bezel">
-        <span className="iphone-island" aria-hidden="true" />
         <div className="iphone-screen">
           <img src={src} alt={alt} />
         </div>

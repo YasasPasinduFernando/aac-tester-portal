@@ -13,7 +13,7 @@ export default function HomePage() {
       <main id="main" className="mx-auto max-w-lg px-4 pb-2 pt-6 sm:pt-10">
         <JoinCard />
       </main>
-      <section className="mx-auto max-w-3xl px-4" aria-label={t.theApp}>
+      <section className="mx-auto max-w-3xl overflow-x-clip px-4" aria-label={t.theApp}>
         <p className="text-center text-sm font-semibold text-ink/60">{t.theApp}</p>
         <div className="mt-3">
           <AppPhoneCluster compact />
