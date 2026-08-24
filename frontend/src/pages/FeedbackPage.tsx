@@ -65,13 +65,13 @@ export default function FeedbackPage() {
   return (
     <div className="min-h-screen">
       <SiteHeader />
-      <main id="main" className="mx-auto max-w-3xl px-4 py-16">
-        <h1 className="display text-4xl text-ink sm:text-5xl">Feedback</h1>
+      <main id="main" className="mx-auto max-w-lg px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
+        <h1 className="display text-3xl text-ink">Feedback</h1>
         <p className="mt-3 max-w-md text-base text-ink/80">
           {USER_MESSAGES.feedbackPrompt} {USER_MESSAGES.sameAccountGroupsAndPlay}
         </p>
 
-        <form className="glass mt-10 space-y-5 rounded-[2rem] p-6 sm:p-8" onSubmit={onSubmit} noValidate>
+        <form className="glass mt-6 space-y-5 rounded-[1.5rem] p-4 sm:p-8" onSubmit={onSubmit} noValidate>
           {user ? (
             <PlayAccountChip email={user.email} />
           ) : (
@@ -147,7 +147,7 @@ export default function FeedbackPage() {
           ) : null}
           <button
             type="submit"
-            className="rounded-full bg-teal px-6 py-3 font-semibold text-white hover:bg-teal-dark disabled:opacity-70"
+            className="inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full bg-teal px-6 font-semibold text-white hover:bg-teal-dark disabled:opacity-70"
             disabled={loading}
           >
             {loading ? "Sending…" : "Send feedback"}

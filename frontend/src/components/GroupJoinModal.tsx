@@ -78,17 +78,17 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
         aria-labelledby={titleId}
         aria-describedby={descId}
         tabIndex={-1}
-        className="group-join-modal glass flex max-h-[min(100dvh,40rem)] w-full max-w-md flex-col overflow-hidden rounded-[1.75rem] text-ink shadow-2xl outline-none"
+        className="group-join-modal glass flex max-h-[min(100dvh,36rem)] w-full max-w-md flex-col overflow-hidden rounded-t-[1.5rem] text-ink shadow-2xl outline-none sm:rounded-[1.75rem]"
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-3">
-            <h3 id={titleId} className="display text-3xl">
-              {USER_MESSAGES.joinGroupModalTitle}
+            <h3 id={titleId} className="text-xl font-semibold">
+              Tap Join group
             </h3>
             <button
               type="button"
-              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-ink/15 text-xl text-ink/70 hover:bg-mist/60"
+              className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-ink/15 text-xl text-ink/70"
               onClick={onClose}
               aria-label="Close join instructions"
             >
@@ -98,17 +98,17 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
           <p id={descId} className="sr-only">
             {USER_MESSAGES.playAccountImportant}
           </p>
-          <div className="mt-4">
+          <div className="mt-3">
             <AccountMismatchWarning email={email} />
           </div>
           <img
             src={GUIDE_SHOTS.joinGroup.src}
             alt={GUIDE_SHOTS.joinGroup.alt}
-            className="mt-4 h-auto w-full rounded-2xl bg-white"
+            className="mt-3 h-auto w-full rounded-xl bg-white"
           />
-          <p className="mt-3 text-sm text-ink/70">{USER_MESSAGES.lookForJoinGroup}</p>
+          <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.lookForJoinGroup}</p>
         </div>
-        <div className="shrink-0 border-t border-ink/10 bg-foam/90 px-5 py-4 sm:px-6">
+        <div className="shrink-0 border-t border-ink/10 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
           <button
             type="button"
             className="inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-6 font-semibold text-white hover:bg-clay-dark"
@@ -118,7 +118,6 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
             Open Tester Group
             <span aria-hidden="true">↗</span>
           </button>
-          <p className="mt-2 text-center text-sm text-ink/60">{USER_MESSAGES.groupsNewTabHint}</p>
         </div>
       </div>
     </div>

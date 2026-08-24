@@ -66,7 +66,7 @@ export default function GoogleSignIn() {
           shape: "pill",
           text: "continue_with",
           logo_alignment: "left",
-          width: Math.min(320, hostRef.current.clientWidth || 320),
+          width: Math.min(400, Math.max(280, Math.floor(hostRef.current.clientWidth) || 320)),
         });
       } catch {
         if (!cancelled) setStatus(USER_MESSAGES.googleSignInFailed);
@@ -88,7 +88,7 @@ export default function GoogleSignIn() {
       ) : (
         <div
           ref={hostRef}
-          className="flex min-h-14 justify-center"
+          className="flex min-h-14 w-full justify-center"
           aria-label="Continue with Google"
         />
       )}

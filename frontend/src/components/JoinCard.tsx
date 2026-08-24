@@ -1,18 +1,18 @@
 import { useRef, useState } from "react";
-import { alreadyJoinedPrompt, playStepsUnlocked, USER_MESSAGES } from "@shared/types";
+import { playStepsUnlocked, USER_MESSAGES } from "@shared/types";
 import { useAuth } from "../auth";
-import { AccountMismatchWarning, PlayAccountChip, VerifiedAccountCard, WrongAccountHelp } from "./AccountWarning";
-import { AppPhoneCluster } from "./AppScreenCards";
+import { AccountMismatchWarning, VerifiedAccountCard, WrongAccountHelp } from "./AccountWarning";
 import GoogleSignIn from "./GoogleSignIn";
 import GroupJoinModal from "./GroupJoinModal";
+
+const STEPS = ["Join group", "Check access", "Install app"] as const;
 
 export default function JoinCard() {
   const { ready, user, refresh, switchAccount } = useAuth();
   const [checking, setChecking] = useState(false);
   const [checkMessage, setCheckMessage] = useState("");
-  const [checkState, setCheckState] = useState<
-    "verified" | "not_member" | "unavailable" | null
-  >(null);
+  const [checkState, setCheckState] = useState<"verified" | "not_member" | "unavailable" | null>(null);
+  const [openedGroup, setOpenedGroup] = useState(false);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
   const joinGroupButtonRef = useRef<HTMLButtonElement>(null);
   const checkAccessRef = useRef<HTMLDivElement>(null);
@@ -32,11 +32,11 @@ export default function JoinCard() {
   function confirmOpenGroup() {
     if (!user?.groupJoinUrl) return;
     setShowGroupHelp(false);
+    setOpenedGroup(true);
     void recordEvent("group_join");
     window.open(user.groupJoinUrl, "_blank", "noopener,noreferrer");
     window.requestAnimationFrame(() => {
       checkAccessRef.current?.scrollIntoView({ block: "nearest" });
-      joinGroupButtonRef.current?.focus();
     });
   }
 
@@ -54,12 +54,8 @@ export default function JoinCard() {
         body: "{}",
       });
       const payload = (await response.json()) as {
-        ok: boolean;
-        membershipVerified: boolean;
         membershipVerification: "verified" | "not_member" | "unavailable";
         message: string;
-        playJoinUrl: string | null;
-        playStoreUrl: string | null;
       };
       setCheckState(payload.membershipVerification);
       setCheckMessage(payload.message);
@@ -86,22 +82,31 @@ export default function JoinCard() {
   const verified = Boolean(user?.membershipVerified);
   const showPlay = playStepsUnlocked(verified);
   const notMember = !verified && checkState === "not_member";
+  const groupStarted = openedGroup || Boolean(user?.groupJoinStarted);
+  const step = verified ? 3 : groupStarted ? 2 : 1;
 
   return (
-    <section id="join" className="scroll-mt-24" aria-labelledby="join-title">
-      <h1 id="join-title" className="display text-center text-4xl text-ink sm:text-5xl">
+    <section id="join" className="scroll-mt-20" aria-labelledby="join-title">
+      <h1 id="join-title" className="display text-center text-[2rem] leading-none text-ink sm:text-4xl">
         {USER_MESSAGES.joinBetaTitle}
       </h1>
-      <p className="mx-auto mt-3 max-w-md text-center text-base font-semibold text-ink">
+      <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium text-ink/80 sm:text-base">
         {USER_MESSAGES.joinBetaSubtitle}
       </p>
 
-      <div className="glass mt-8 rounded-[1.75rem] p-5 sm:p-7">
+      <div className="glass mt-5 rounded-[1.5rem] p-4 sm:mt-8 sm:p-7">
         {!ready ? (
           <p className="text-center text-sm text-ink/70">Loading…</p>
         ) : !user ? (
           <>
-            <p className="text-center text-sm text-ink/75">{USER_MESSAGES.sameAccountGroupsAndPlay}</p>
+            <ol className="mb-4 space-y-1 text-sm text-ink/80">
+              <li>1. Continue with Google</li>
+              <li>2. Join the tester group</li>
+              <li>3. Join Play test and install</li>
+            </ol>
+            <p className="text-center text-sm font-semibold text-ink">
+              {USER_MESSAGES.sameAccountGroupsAndPlay}
+            </p>
             <GoogleSignIn />
           </>
         ) : (
@@ -110,122 +115,95 @@ export default function JoinCard() {
               email={user.email}
               displayName={user.displayName}
               avatarUrl={user.avatarUrl}
+              onSwitch={() => void switchAccount()}
             />
-            <div className="flex flex-wrap gap-3 text-sm">
-              <button
-                type="button"
-                className="font-semibold text-clay hover:text-clay-dark"
-                onClick={() => void switchAccount()}
-              >
-                {USER_MESSAGES.useDifferentAccount}
-              </button>
-            </div>
+            <StepBar current={step} />
 
-            <div className="rounded-2xl border border-ink/10 bg-white px-4 py-5 sm:px-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay">Step 1</p>
-              <h2 className="display mt-1 text-3xl text-ink">{USER_MESSAGES.joinGroupModalTitle}</h2>
-              <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.useThisSameAccountForGroup}</p>
-              <div className="mt-3">
-                <PlayAccountChip email={user.email} />
-              </div>
-              <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.groupsSignedInWarning}</p>
-              <div className="mt-4">
-                <AccountMismatchWarning email={user.email} />
-              </div>
-              <button
-                ref={joinGroupButtonRef}
-                type="button"
-                className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white hover:bg-clay-dark"
-                onClick={() => setShowGroupHelp(true)}
-                aria-haspopup="dialog"
-                aria-expanded={showGroupHelp}
-              >
-                Open Tester Group
-                <span aria-hidden="true">↗</span>
-              </button>
-              <p className="mt-2 text-center text-sm text-ink/60">{USER_MESSAGES.groupsNewTabHint}</p>
-              <div className="mt-4 border-t border-ink/10 pt-4">
-                <WrongAccountHelp />
-              </div>
-            </div>
-
-            <div ref={checkAccessRef} id="check-access" className="rounded-2xl border border-ink/10 bg-foam px-4 py-5 sm:px-5">
-              <p className="text-sm font-semibold text-ink">{alreadyJoinedPrompt(user.email)}</p>
-              {verified ? (
-                <div className="mt-3" role="status">
-                  <p className="text-base font-semibold text-teal-dark">✓ {USER_MESSAGES.inTheGroup}</p>
-                  <p className="mt-1 break-all text-base font-semibold text-ink">{user.email}</p>
+            {step === 1 ? (
+              <div>
+                <h2 className="text-lg font-semibold text-ink">1. Join the tester group</h2>
+                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.useThisSameAccountForGroup}</p>
+                <div className="mt-3">
+                  <AccountMismatchWarning email={user.email} />
                 </div>
-              ) : notMember ? (
-                <div className="mt-3 space-y-3" role="status">
-                  <p className="text-sm text-ink/80">{USER_MESSAGES.checkAccessNotMember}</p>
-                  <p className="text-sm text-ink/80">
-                    Make sure you joined the group with:
-                    <span className="mt-1 block break-all font-semibold text-ink">{user.email}</span>
+                <button
+                  ref={joinGroupButtonRef}
+                  type="button"
+                  className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white hover:bg-clay-dark"
+                  onClick={() => setShowGroupHelp(true)}
+                  aria-haspopup="dialog"
+                  aria-expanded={showGroupHelp}
+                >
+                  Open Tester Group
+                  <span aria-hidden="true">↗</span>
+                </button>
+                <p className="mt-2 text-center text-xs text-ink/60">{USER_MESSAGES.groupsNewTabHint}</p>
+              </div>
+            ) : null}
+
+            {step === 2 ? (
+              <div ref={checkAccessRef} id="check-access">
+                <h2 className="text-lg font-semibold text-ink">2. Check access</h2>
+                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.afterJoinCheck}</p>
+                {notMember ? (
+                  <div className="mt-3 space-y-3" role="status">
+                    <p className="text-sm text-ink/80">{USER_MESSAGES.checkAccessNotMember}</p>
+                    <p className="break-all text-sm font-semibold text-ink">{user.email}</p>
+                    <WrongAccountHelp />
+                  </div>
+                ) : checkMessage ? (
+                  <p className="mt-3 text-sm text-ink/80" role="status">
+                    {checkMessage}
                   </p>
-                  <WrongAccountHelp />
-                </div>
-              ) : checkMessage ? (
-                <p className="mt-3 text-sm text-ink/80" role="status">
-                  {checkMessage}
-                </p>
-              ) : (
-                <p className="mt-3 text-sm text-ink/70">{USER_MESSAGES.afterJoinCheck}</p>
-              )}
-              {!verified ? (
+                ) : null}
                 <button
                   type="button"
-                  className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full border-2 border-clay px-5 font-semibold text-clay hover:bg-clay hover:text-white disabled:opacity-60"
+                  className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full bg-clay px-5 font-semibold text-white hover:bg-clay-dark disabled:opacity-60"
                   onClick={() => void checkAccess()}
                   disabled={checking}
                 >
                   {checking ? "Checking…" : "Check My Access"}
                 </button>
-              ) : null}
-            </div>
-
-            {showPlay && user.playJoinUrl ? (
-              <div className="rounded-2xl border border-ink/10 bg-foam px-4 py-5 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay">Step 2</p>
-                <h2 className="display mt-1 text-3xl text-ink">{USER_MESSAGES.nextPlayTest}</h2>
-                <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.joinPlayTestHint}</p>
-                <div className="mt-3">
-                  <PlayAccountChip email={user.email} />
-                </div>
-                <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.playUsingSame}</p>
-                <ExternalButton
-                  className="mt-4 min-h-14 w-full bg-clay text-white hover:bg-clay-dark"
-                  onClick={openPlayTest}
-                  label="Join Google Play Test"
-                />
+                <button
+                  type="button"
+                  className="mt-3 w-full text-center text-sm font-semibold text-clay"
+                  onClick={() => setShowGroupHelp(true)}
+                >
+                  Open Tester Group again
+                </button>
               </div>
             ) : null}
 
-            {showPlay && user.playStoreUrl ? (
-              <div className="rounded-2xl border border-ink/10 bg-white px-4 py-5 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay">Step 3</p>
-                <h2 className="display mt-1 text-3xl text-ink">{USER_MESSAGES.installTitle}</h2>
-                <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.installHint}</p>
-                <ExternalButton
-                  className="mt-4 min-h-14 w-full border-2 border-ink/15 bg-foam text-ink hover:bg-mist/60"
-                  onClick={openInstall}
-                  label="Install AAC-Sinhala"
-                />
-              </div>
-            ) : null}
-
-            {showPlay ? (
-              <div className="rounded-2xl border border-ink/10 bg-foam px-4 py-5 sm:px-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay">Step 4</p>
-                <h2 className="display mt-1 text-3xl text-ink">{USER_MESSAGES.startTestingTitle}</h2>
-                <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.startTestingHint}</p>
-                <div className="mt-5">
-                  <AppPhoneCluster compact />
-                </div>
-                <p className="mt-6 text-sm font-semibold text-ink">{USER_MESSAGES.feedbackPrompt}</p>
+            {step === 3 && showPlay ? (
+              <div>
+                <p className="text-base font-semibold text-teal-dark">✓ {USER_MESSAGES.inTheGroup}</p>
+                <h2 className="mt-3 text-lg font-semibold text-ink">3. Join Play test, then install</h2>
+                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.playUsingSame}</p>
+                {user.playJoinUrl ? (
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white hover:bg-clay-dark"
+                    onClick={openPlayTest}
+                    aria-label="Join Google Play Test (opens in a new tab)"
+                  >
+                    Join Google Play Test
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                ) : null}
+                {user.playStoreUrl ? (
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full border-2 border-ink/15 bg-white px-5 text-base font-semibold text-ink"
+                    onClick={openInstall}
+                    aria-label="Install AAC-Sinhala (opens in a new tab)"
+                  >
+                    Install AAC-Sinhala
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                ) : null}
                 <a
                   href="/feedback"
-                  className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-full bg-teal px-5 text-base font-semibold text-white no-underline hover:bg-teal-dark"
+                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center text-sm font-semibold text-clay"
                 >
                   {USER_MESSAGES.sendFeedback}
                 </a>
@@ -247,26 +225,24 @@ export default function JoinCard() {
   );
 }
 
-function ExternalButton({
-  className,
-  onClick,
-  label,
-}: {
-  className: string;
-  onClick: () => void;
-  label: string;
-}) {
+function StepBar({ current }: { current: number }) {
   return (
-    <button
-      type="button"
-      className={`inline-flex touch-manipulation items-center justify-center gap-2 rounded-full px-6 text-base font-semibold ${className}`}
-      onClick={onClick}
-      aria-label={`${label} (opens in a new tab)`}
-    >
-      <span>{label}</span>
-      <span aria-hidden="true" className="text-lg leading-none">
-        ↗
-      </span>
-    </button>
+    <ol className="grid grid-cols-3 gap-1" aria-label="Onboarding steps">
+      {STEPS.map((label, index) => {
+        const n = index + 1;
+        const active = n === current;
+        const done = n < current;
+        return (
+          <li
+            key={label}
+            className={`rounded-full px-1 py-2 text-center text-[11px] font-semibold leading-tight sm:text-xs ${
+              active ? "bg-clay text-white" : done ? "bg-teal/15 text-teal-dark" : "bg-mist/50 text-ink/50"
+            }`}
+          >
+            {n}. {label}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
