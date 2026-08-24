@@ -121,7 +121,14 @@ export const USER_MESSAGES = {
   readyToTest: "You're ready to test AAC Sinhala",
   checkAccessUnavailable: "Membership verification is currently unavailable.",
   feedbackThanks: "Thank you. Your feedback was saved privately.",
+  searchGroupHint:
+    "If Google Groups is not signed in with this account, search for our tester group and join it.",
+  copyGroupName: "Copy group name",
+  groupNameCopied: "Copied",
 } as const;
+
+export const TESTER_GROUP_SEARCH_NAME = "aac-sinhala-testers";
+export const TESTER_GROUP_EMAIL = "aac-sinhala-testers@googlegroups.com";
 
 export function deriveStatus(input: {
   groupJoinStartedAt: string | null;

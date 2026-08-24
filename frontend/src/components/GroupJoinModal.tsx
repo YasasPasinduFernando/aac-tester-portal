@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from "react";
 import { GUIDE_SHOTS, USER_MESSAGES } from "@shared/types";
 import { AccountMismatchWarning } from "./AccountWarning";
+import CopyGroupName from "./CopyGroupName";
 
 interface GroupJoinModalProps {
   open: boolean;
@@ -100,6 +101,9 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
           </p>
           <div className="mt-3">
             <AccountMismatchWarning email={email} />
+          </div>
+          <div className="mt-3">
+            <CopyGroupName />
           </div>
           <img
             src={GUIDE_SHOTS.joinGroup.src}

@@ -4,6 +4,8 @@ import {
   GROUP_JOIN_WALKTHROUGH,
   GUIDE_SHOTS,
   playStepsUnlocked,
+  TESTER_GROUP_EMAIL,
+  TESTER_GROUP_SEARCH_NAME,
   USER_MESSAGES,
 } from "./types";
 
@@ -81,5 +83,14 @@ describe("tester group join copy", () => {
     expect(GUIDE_SHOTS.joinGroup.src).toBe("/images/guides/join-group.png");
     expect(GUIDE_SHOTS.becomeTester.src).toBe("/images/guides/become-tester.png");
     expect(GUIDE_SHOTS.installApp.src).toBe("/images/guides/install-app.png");
+  });
+
+  it("tells testers to search for the group with this account and copy the name", () => {
+    expect(USER_MESSAGES.searchGroupHint).toBe(
+      "If Google Groups is not signed in with this account, search for our tester group and join it.",
+    );
+    expect(USER_MESSAGES.copyGroupName).toBe("Copy group name");
+    expect(TESTER_GROUP_SEARCH_NAME).toBe("aac-sinhala-testers");
+    expect(TESTER_GROUP_EMAIL).toBe("aac-sinhala-testers@googlegroups.com");
   });
 });

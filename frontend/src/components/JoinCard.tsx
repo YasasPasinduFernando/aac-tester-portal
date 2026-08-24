@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { playStepsUnlocked, USER_MESSAGES } from "@shared/types";
 import { useAuth } from "../auth";
 import { AccountMismatchWarning, VerifiedAccountCard, WrongAccountHelp } from "./AccountWarning";
+import CopyGroupName from "./CopyGroupName";
 import GoogleSignIn from "./GoogleSignIn";
 import GroupJoinModal from "./GroupJoinModal";
 
@@ -126,6 +127,9 @@ export default function JoinCard() {
                 <div className="mt-3">
                   <AccountMismatchWarning email={user.email} />
                 </div>
+                <div className="mt-3">
+                  <CopyGroupName />
+                </div>
                 <button
                   ref={joinGroupButtonRef}
                   type="button"
@@ -145,6 +149,9 @@ export default function JoinCard() {
               <div ref={checkAccessRef} id="check-access">
                 <h2 className="text-lg font-semibold text-ink">2. Check access</h2>
                 <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.afterJoinCheck}</p>
+                <div className="mt-3">
+                  <CopyGroupName />
+                </div>
                 {notMember ? (
                   <div className="mt-3 space-y-3" role="status">
                     <p className="text-sm text-ink/80">{USER_MESSAGES.checkAccessNotMember}</p>
