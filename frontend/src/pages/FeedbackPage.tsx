@@ -1,0 +1,154 @@
+import { useId, useState, type FormEvent } from "react";
+import { FEEDBACK_TYPES } from "@shared/types";
+import { isValidEmail, normalizeEmail } from "@shared/email";
+import SiteFooter from "../components/SiteFooter";
+import SiteHeader from "../components/SiteHeader";
+
+export default function FeedbackPage() {
+  const emailId = useId();
+  const typeId = useId();
+  const messageId = useId();
+  const screenshotId = useId();
+  const errorId = useId();
+  const [email, setEmail] = useState("");
+  const [feedbackType, setFeedbackType] = useState<(typeof FEEDBACK_TYPES)[number]>("Bug");
+  const [message, setMessage] = useState("");
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault();
+    setSuccess("");
+    const normalized = normalizeEmail(email);
+    if (!isValidEmail(normalized)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+    if (message.trim().length < 10) {
+      setError("Please include a short description (at least 10 characters).");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const body = new FormData();
+      body.set("email", normalized);
+      body.set("feedbackType", feedbackType);
+      body.set("message", message.trim());
+      if (screenshot) body.set("screenshot", screenshot);
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "X-Requested-With": "AACSinhalaPortal" },
+        body,
+      });
+      const payload = (await response.json()) as { ok: boolean; message: string };
+      if (!payload.ok) {
+        setError(payload.message);
+      } else {
+        setSuccess(payload.message);
+        setMessage("");
+        setScreenshot(null);
+      }
+    } catch {
+      setError("Please try again in a moment.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="min-h-screen">
+      <SiteHeader />
+      <main id="main" className="mx-auto max-w-3xl px-4 py-16">
+        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-teal">Private feedback</p>
+        <h1 className="display mt-3 text-5xl text-ink sm:text-6xl">Tell us what to fix.</h1>
+        <p className="mt-4 text-lg text-ink/80">
+          Feedback is stored securely and is not shown on this website. Use the Google account that installed the
+          app when you can.
+        </p>
+
+        <form className="glass mt-10 space-y-5 rounded-[2rem] p-6 sm:p-8" onSubmit={onSubmit} noValidate>
+          <div>
+            <label htmlFor={emailId} className="block text-sm font-semibold">
+              Email
+            </label>
+            <input
+              id={emailId}
+              type="email"
+              required
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3"
+              autoComplete="email"
+            />
+          </div>
+          <div>
+            <label htmlFor={typeId} className="block text-sm font-semibold">
+              Feedback type
+            </label>
+            <select
+              id={typeId}
+              value={feedbackType}
+              onChange={(event) =>
+                setFeedbackType(event.target.value as (typeof FEEDBACK_TYPES)[number])
+              }
+              className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3"
+            >
+              {FEEDBACK_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor={messageId} className="block text-sm font-semibold">
+              Message
+            </label>
+            <textarea
+              id={messageId}
+              required
+              rows={6}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3"
+              aria-describedby={error ? errorId : undefined}
+            />
+          </div>
+          <div>
+            <label htmlFor={screenshotId} className="block text-sm font-semibold">
+              Screenshot (optional)
+            </label>
+            <input
+              id={screenshotId}
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(event) => setScreenshot(event.target.files?.[0] ?? null)}
+              className="mt-2 w-full text-sm"
+            />
+          </div>
+          {error ? (
+            <p id={errorId} className="text-sm font-medium text-clay-dark" role="alert">
+              {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p className="text-sm font-medium text-teal-dark" role="status">
+              {success}
+            </p>
+          ) : null}
+          <button
+            type="submit"
+            className="rounded-full bg-teal px-6 py-3 font-semibold text-white hover:bg-teal-dark disabled:opacity-70"
+            disabled={loading}
+          >
+            {loading ? "Sending…" : "Send feedback"}
+          </button>
+        </form>
+      </main>
+      <SiteFooter />
+    </div>
+  );
+}

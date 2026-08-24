@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+frontend/dist/
+.wrangler/
+.dev.vars
+.mf/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.dev.vars.example
+credentials.json
+*-credentials.json
+*service-account*.json
+*.pem
+*.p12
+*.key
+id_rsa
+id_rsa.pub
+oauth*.json
+token.json
+tokens.json
+secrets/
+.secret*
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+
+# Logs and coverage
+*.log
+coverage/
+.nyc_output/
+
+# Wrangler local D1
+wrangler.toml.bak
+cloudflare-env.d.ts
+
+# Generated types that may include local ids
+.wrangler/

@@ -1,0 +1,40 @@
+name = "aac-tester-portal"
+main = "worker/src/index.ts"
+compatibility_date = "2026-08-01"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+[assets]
+directory = "frontend/dist"
+binding = "ASSETS"
+not_found_handling = "single-page-application"
+html_handling = "auto-trailing-slash"
+
+[vars]
+GOOGLE_GROUP_EMAIL = "aac-sinhala-testers@googlegroups.com"
+ENABLE_AUTO_REMOVAL = "false"
+TESTER_INACTIVITY_DAYS = "90"
+ALLOWED_ORIGINS = "https://aac.yasaboy.com"
+ENVIRONMENT = "production"
+ENABLE_ADMIN_DIRECTORY = "false"
+
+# PLAY_TEST_JOIN_URL, APPS_SCRIPT_URL, APPS_SCRIPT_SHARED_SECRET,
+# RATE_LIMIT_SALT, CF_ACCESS_TEAM_DOMAIN, and CF_ACCESS_AUD
+# must be provided as secrets or .dev.vars — never committed.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "aac-tester-portal"
+database_id = "REPLACE_WITH_D1_DATABASE_ID"
+
+# Optional R2 binding for feedback screenshots. Add after:
+#   wrangler r2 bucket create aac-tester-feedback
+# [[r2_buckets]]
+# binding = "FEEDBACK_BUCKET"
+# bucket_name = "aac-tester-feedback"
+
+[triggers]
+crons = ["0 3 * * *"]
+
+[observability]
+enabled = true
