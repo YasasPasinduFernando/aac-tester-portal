@@ -1,17 +1,16 @@
 import { useRef, useState } from "react";
-import { playStepsUnlocked, USER_MESSAGES } from "@shared/types";
+import { playStepsUnlocked } from "@shared/types";
 import { useAuth } from "../auth";
+import { useT } from "../locale";
 import { AccountMismatchWarning, VerifiedAccountCard, WrongAccountHelp } from "./AccountWarning";
 import CopyGroupName from "./CopyGroupName";
 import GoogleSignIn from "./GoogleSignIn";
 import GroupJoinModal from "./GroupJoinModal";
 
-const STEPS = ["Join group", "Check access", "Install app"] as const;
-
 export default function JoinCard() {
+  const t = useT();
   const { ready, user, refresh, switchAccount } = useAuth();
   const [checking, setChecking] = useState(false);
-  const [checkMessage, setCheckMessage] = useState("");
   const [checkState, setCheckState] = useState<"verified" | "not_member" | "unavailable" | null>(null);
   const [openedGroup, setOpenedGroup] = useState(false);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
@@ -43,7 +42,6 @@ export default function JoinCard() {
 
   async function checkAccess() {
     setChecking(true);
-    setCheckMessage("");
     try {
       const response = await fetch("/api/testers/access", {
         method: "POST",
@@ -56,14 +54,11 @@ export default function JoinCard() {
       });
       const payload = (await response.json()) as {
         membershipVerification: "verified" | "not_member" | "unavailable";
-        message: string;
       };
       setCheckState(payload.membershipVerification);
-      setCheckMessage(payload.message);
       await refresh();
     } catch {
       setCheckState("unavailable");
-      setCheckMessage(USER_MESSAGES.checkAccessUnavailable);
     } finally {
       setChecking(false);
     }
@@ -85,29 +80,28 @@ export default function JoinCard() {
   const notMember = !verified && checkState === "not_member";
   const groupStarted = openedGroup || Boolean(user?.groupJoinStarted);
   const step = verified ? 3 : groupStarted ? 2 : 1;
+  const steps = [t.stepJoinGroup, t.stepCheckAccess, t.stepInstallApp];
 
   return (
     <section id="join" className="scroll-mt-20" aria-labelledby="join-title">
       <h1 id="join-title" className="display text-center text-[2rem] leading-none text-ink sm:text-4xl">
-        {USER_MESSAGES.joinBetaTitle}
+        {t.joinBetaTitle}
       </h1>
       <p className="mx-auto mt-2 max-w-sm text-center text-sm font-medium text-ink/80 sm:text-base">
-        {USER_MESSAGES.joinBetaSubtitle}
+        {t.joinBetaSubtitle}
       </p>
 
       <div className="glass mt-5 rounded-[1.5rem] p-4 sm:mt-8 sm:p-7">
         {!ready ? (
-          <p className="text-center text-sm text-ink/70">Loading…</p>
+          <p className="text-center text-sm text-ink/70">{t.loading}</p>
         ) : !user ? (
           <>
             <ol className="mb-4 space-y-1 text-sm text-ink/80">
-              <li>1. Continue with Google</li>
-              <li>2. Join the tester group</li>
-              <li>3. Join Play test and install</li>
+              <li>1. {t.continueWithGoogle}</li>
+              <li>2. {t.joinTesterGroup}</li>
+              <li>3. {t.joinPlayAndInstall}</li>
             </ol>
-            <p className="text-center text-sm font-semibold text-ink">
-              {USER_MESSAGES.sameAccountGroupsAndPlay}
-            </p>
+            <p className="text-center text-sm font-semibold text-ink">{t.sameAccountGroupsAndPlay}</p>
             <GoogleSignIn />
           </>
         ) : (
@@ -118,12 +112,28 @@ export default function JoinCard() {
               avatarUrl={user.avatarUrl}
               onSwitch={() => void switchAccount()}
             />
-            <StepBar current={step} />
+            <ol className="grid grid-cols-3 gap-1" aria-label={t.onboardingSteps}>
+              {steps.map((label, index) => {
+                const n = index + 1;
+                const active = n === step;
+                const done = n < step;
+                return (
+                  <li
+                    key={label}
+                    className={`rounded-full px-1 py-2 text-center text-[11px] font-semibold leading-tight sm:text-xs ${
+                      active ? "bg-clay text-white" : done ? "bg-teal/15 text-teal-dark" : "bg-mist/50 text-ink/50"
+                    }`}
+                  >
+                    {n}. {label}
+                  </li>
+                );
+              })}
+            </ol>
 
             {step === 1 ? (
               <div>
-                <h2 className="text-lg font-semibold text-ink">1. Join the tester group</h2>
-                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.useThisSameAccountForGroup}</p>
+                <h2 className="text-lg font-semibold text-ink">{t.step1Title}</h2>
+                <p className="mt-1 text-sm text-ink/80">{t.useThisSameAccountForGroup}</p>
                 <div className="mt-3">
                   <AccountMismatchWarning email={user.email} />
                 </div>
@@ -138,29 +148,29 @@ export default function JoinCard() {
                   aria-haspopup="dialog"
                   aria-expanded={showGroupHelp}
                 >
-                  Open Tester Group
+                  {t.openTesterGroup}
                   <span aria-hidden="true">↗</span>
                 </button>
-                <p className="mt-2 text-center text-xs text-ink/60">{USER_MESSAGES.groupsNewTabHint}</p>
+                <p className="mt-2 text-center text-xs text-ink/60">{t.groupsNewTabHint}</p>
               </div>
             ) : null}
 
             {step === 2 ? (
               <div ref={checkAccessRef} id="check-access">
-                <h2 className="text-lg font-semibold text-ink">2. Check access</h2>
-                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.afterJoinCheck}</p>
+                <h2 className="text-lg font-semibold text-ink">{t.step2Title}</h2>
+                <p className="mt-1 text-sm text-ink/80">{t.afterJoinCheck}</p>
                 <div className="mt-3">
                   <CopyGroupName />
                 </div>
                 {notMember ? (
                   <div className="mt-3 space-y-3" role="status">
-                    <p className="text-sm text-ink/80">{USER_MESSAGES.checkAccessNotMember}</p>
+                    <p className="text-sm text-ink/80">{t.checkAccessNotMember}</p>
                     <p className="break-all text-sm font-semibold text-ink">{user.email}</p>
                     <WrongAccountHelp />
                   </div>
-                ) : checkMessage ? (
+                ) : checkState === "unavailable" ? (
                   <p className="mt-3 text-sm text-ink/80" role="status">
-                    {checkMessage}
+                    {t.checkAccessUnavailable}
                   </p>
                 ) : null}
                 <button
@@ -169,31 +179,31 @@ export default function JoinCard() {
                   onClick={() => void checkAccess()}
                   disabled={checking}
                 >
-                  {checking ? "Checking…" : "Check My Access"}
+                  {checking ? t.checking : t.checkMyAccess}
                 </button>
                 <button
                   type="button"
                   className="mt-3 w-full text-center text-sm font-semibold text-clay"
                   onClick={() => setShowGroupHelp(true)}
                 >
-                  Open Tester Group again
+                  {t.openTesterGroupAgain}
                 </button>
               </div>
             ) : null}
 
             {step === 3 && showPlay ? (
               <div>
-                <p className="text-base font-semibold text-teal-dark">✓ {USER_MESSAGES.inTheGroup}</p>
-                <h2 className="mt-3 text-lg font-semibold text-ink">3. Join Play test, then install</h2>
-                <p className="mt-1 text-sm text-ink/80">{USER_MESSAGES.playUsingSame}</p>
+                <p className="text-base font-semibold text-teal-dark">✓ {t.inTheGroup}</p>
+                <h2 className="mt-3 text-lg font-semibold text-ink">{t.step3Title}</h2>
+                <p className="mt-1 text-sm text-ink/80">{t.playUsingSame}</p>
                 {user.playJoinUrl ? (
                   <button
                     type="button"
                     className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white hover:bg-clay-dark"
                     onClick={openPlayTest}
-                    aria-label="Join Google Play Test (opens in a new tab)"
+                    aria-label={t.joinPlayAria}
                   >
-                    Join Google Play Test
+                    {t.joinGooglePlayTest}
                     <span aria-hidden="true">↗</span>
                   </button>
                 ) : null}
@@ -202,9 +212,9 @@ export default function JoinCard() {
                     type="button"
                     className="mt-3 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full border-2 border-ink/15 bg-white px-5 text-base font-semibold text-ink"
                     onClick={openInstall}
-                    aria-label="Install AAC-Sinhala (opens in a new tab)"
+                    aria-label={t.installAria}
                   >
-                    Install AAC-Sinhala
+                    {t.installApp}
                     <span aria-hidden="true">↗</span>
                   </button>
                 ) : null}
@@ -212,7 +222,7 @@ export default function JoinCard() {
                   href="/feedback"
                   className="mt-4 inline-flex min-h-12 w-full items-center justify-center text-sm font-semibold text-clay"
                 >
-                  {USER_MESSAGES.sendFeedback}
+                  {t.sendFeedback}
                 </a>
               </div>
             ) : null}
@@ -229,27 +239,5 @@ export default function JoinCard() {
         />
       ) : null}
     </section>
-  );
-}
-
-function StepBar({ current }: { current: number }) {
-  return (
-    <ol className="grid grid-cols-3 gap-1" aria-label="Onboarding steps">
-      {STEPS.map((label, index) => {
-        const n = index + 1;
-        const active = n === current;
-        const done = n < current;
-        return (
-          <li
-            key={label}
-            className={`rounded-full px-1 py-2 text-center text-[11px] font-semibold leading-tight sm:text-xs ${
-              active ? "bg-clay text-white" : done ? "bg-teal/15 text-teal-dark" : "bg-mist/50 text-ink/50"
-            }`}
-          >
-            {n}. {label}
-          </li>
-        );
-      })}
-    </ol>
   );
 }

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
-import { GUIDE_SHOTS, USER_MESSAGES } from "@shared/types";
+import { GUIDE_SHOTS } from "@shared/types";
+import { useT } from "../locale";
 import { AccountMismatchWarning } from "./AccountWarning";
 import CopyGroupName from "./CopyGroupName";
 
@@ -11,6 +12,7 @@ interface GroupJoinModalProps {
 }
 
 export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: GroupJoinModalProps) {
+  const t = useT();
   const titleId = useId();
   const descId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -85,19 +87,19 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6">
           <div className="flex items-start justify-between gap-3">
             <h3 id={titleId} className="text-xl font-semibold">
-              Tap Join group
+              {t.tapJoinGroup}
             </h3>
             <button
               type="button"
               className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-ink/15 text-xl text-ink/70"
               onClick={onClose}
-              aria-label="Close join instructions"
+              aria-label={t.closeJoinInstructions}
             >
               ×
             </button>
           </div>
           <p id={descId} className="sr-only">
-            {USER_MESSAGES.playAccountImportant}
+            {t.playAccountImportant}
           </p>
           <div className="mt-3">
             <AccountMismatchWarning email={email} />
@@ -110,16 +112,16 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
             alt={GUIDE_SHOTS.joinGroup.alt}
             className="mt-3 h-auto w-full rounded-xl bg-white"
           />
-          <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.lookForJoinGroup}</p>
+          <p className="mt-2 text-sm text-ink/70">{t.lookForJoinGroup}</p>
         </div>
         <div className="shrink-0 border-t border-ink/10 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6">
           <button
             type="button"
             className="inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-6 font-semibold text-white hover:bg-clay-dark"
             onClick={onOpenGroup}
-            aria-label="Open Tester Group in a new tab"
+            aria-label={t.openTesterGroupAria}
           >
-            Open Tester Group
+            {t.openTesterGroup}
             <span aria-hidden="true">↗</span>
           </button>
         </div>

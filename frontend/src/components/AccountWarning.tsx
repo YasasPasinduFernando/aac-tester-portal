@@ -1,9 +1,10 @@
-import { USER_MESSAGES } from "@shared/types";
+import { useT } from "../locale";
 
 export function PlayAccountChip({ email }: { email: string }) {
+  const t = useT();
   return (
     <div className="rounded-2xl border border-ink/10 bg-foam px-4 py-3">
-      <p className="text-xs font-semibold text-ink/60">{USER_MESSAGES.playStoreEmailLabel}</p>
+      <p className="text-xs font-semibold text-ink/60">{t.playStoreEmailLabel}</p>
       <p className="mt-0.5 break-all text-base font-semibold text-ink">{email}</p>
     </div>
   );
@@ -20,9 +21,10 @@ export function VerifiedAccountCard({
   avatarUrl: string | null;
   onSwitch: () => void;
 }) {
+  const t = useT();
   return (
     <div className="rounded-2xl border border-teal/25 bg-foam px-4 py-3">
-      <p className="text-sm font-semibold text-teal-dark">✓ {USER_MESSAGES.googleVerified}</p>
+      <p className="text-sm font-semibold text-teal-dark">✓ {t.googleVerified}</p>
       <div className="mt-2 flex items-center gap-3">
         {avatarUrl ? (
           <img
@@ -34,7 +36,7 @@ export function VerifiedAccountCard({
         ) : null}
         <div className="min-w-0 flex-1">
           {displayName ? <p className="truncate text-sm text-ink/70">{displayName}</p> : null}
-          <p className="text-xs font-semibold text-ink/60">{USER_MESSAGES.playStoreEmailLabel}</p>
+          <p className="text-xs font-semibold text-ink/60">{t.playStoreEmailLabel}</p>
           <p className="break-all text-sm font-semibold leading-snug text-ink">{email}</p>
         </div>
       </div>
@@ -43,7 +45,7 @@ export function VerifiedAccountCard({
         className="mt-2 text-sm font-semibold text-clay"
         onClick={onSwitch}
       >
-        {USER_MESSAGES.useDifferentAccount}
+        {t.useDifferentAccount}
       </button>
     </div>
   );
@@ -60,27 +62,29 @@ function WarningIcon() {
 }
 
 export function AccountMismatchWarning({ email }: { email: string }) {
+  const t = useT();
   return (
     <div
       className="rounded-2xl border border-amber-400/80 bg-amber-50 px-3 py-3 text-ink"
       role="note"
-      aria-label="Google account warning"
+      aria-label={t.accountWarning}
     >
       <p className="flex items-start gap-2 text-sm font-bold leading-snug">
         <WarningIcon />
-        <span>{USER_MESSAGES.playAccountImportant}</span>
+        <span>{t.playAccountImportant}</span>
       </p>
       <p className="mt-2 break-all text-base font-semibold">{email}</p>
-      <p className="mt-2 text-sm leading-snug text-ink/80">{USER_MESSAGES.switchIfAnotherAccount}</p>
+      <p className="mt-2 text-sm leading-snug text-ink/80">{t.switchIfAnotherAccount}</p>
     </div>
   );
 }
 
 export function WrongAccountHelp() {
+  const t = useT();
   return (
     <div className="text-sm text-ink/75">
-      <p className="font-semibold text-ink">{USER_MESSAGES.wrongAccountHeading}</p>
-      <p className="mt-1 leading-snug">{USER_MESSAGES.wrongAccountHelp}</p>
+      <p className="font-semibold text-ink">{t.wrongAccountHeading}</p>
+      <p className="mt-1 leading-snug">{t.wrongAccountHelp}</p>
     </div>
   );
 }

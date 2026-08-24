@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme {
-  --font-display: "Cormorant Garamond", "Noto Sans Sinhala", serif;
-  --font-sans: "Plus Jakarta Sans", "Noto Sans Sinhala", system-ui, sans-serif;
+  --font-display: "Cormorant Garamond", "Noto Sans Sinhala", "Noto Sans Tamil", serif;
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Sinhala", "Noto Sans Tamil", system-ui, sans-serif;
   --color-ink: #0b2a4a;
   --color-ink-soft: #12385f;
   --color-sand: #eaf6ff;

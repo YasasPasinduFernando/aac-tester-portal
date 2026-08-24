@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { USER_MESSAGES } from "@shared/types";
 import { useAuth } from "../auth";
+import { useT } from "../locale";
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
 
@@ -36,6 +36,7 @@ function buttonWidth(host: HTMLElement): number {
 }
 
 export default function GoogleSignIn() {
+  const t = useT();
   const { googleClientId, configured, error, signInWithCredential } = useAuth();
   const hostRef = useRef<HTMLDivElement>(null);
   const nonceRef = useRef(randomNonce());
@@ -94,7 +95,7 @@ export default function GoogleSignIn() {
           if (!cancelled) setButtonReady(true);
         }, 1200);
       } catch {
-        if (!cancelled) setStatus(USER_MESSAGES.googleSignInFailed);
+        if (!cancelled) setStatus(t.googleSignInFailed);
       }
     }
 
@@ -103,19 +104,19 @@ export default function GoogleSignIn() {
       cancelled = true;
       observer?.disconnect();
     };
-  }, [configured, googleClientId, signInWithCredential]);
+  }, [configured, googleClientId, signInWithCredential, t.googleSignInFailed]);
 
   return (
     <div className="mt-6">
       {!configured ? (
         <p className="rounded-2xl border border-ink/10 bg-foam px-4 py-3 text-sm text-ink/80" role="status">
-          {USER_MESSAGES.googleSignInUnavailable}
+          {t.googleSignInUnavailable}
         </p>
       ) : (
         <div className="relative min-h-14 w-full">
           {!buttonReady ? (
             <p className="absolute inset-0 flex items-center justify-center text-sm text-ink/60">
-              Loading Google…
+              {t.loadingGoogle}
             </p>
           ) : null}
           <div
@@ -127,7 +128,7 @@ export default function GoogleSignIn() {
       )}
       {error || status ? (
         <p id={statusId} className="mt-3 text-sm font-medium text-clay-dark" role="alert">
-          {error || status}
+          {error ? t.googleSignInFailed : status}
         </p>
       ) : null}
     </div>

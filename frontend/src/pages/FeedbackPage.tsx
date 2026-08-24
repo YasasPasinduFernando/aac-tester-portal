@@ -1,12 +1,14 @@
 import { useId, useState, type FormEvent } from "react";
-import { FEEDBACK_TYPES, USER_MESSAGES } from "@shared/types";
+import { FEEDBACK_TYPES } from "@shared/types";
 import { isValidEmail, normalizeEmail } from "@shared/email";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
 import { useAuth } from "../auth";
 import { PlayAccountChip } from "../components/AccountWarning";
+import { useT } from "../locale";
 
 export default function FeedbackPage() {
+  const t = useT();
   const { user } = useAuth();
   const emailId = useId();
   const typeId = useId();
@@ -26,11 +28,11 @@ export default function FeedbackPage() {
     setSuccess("");
     const accountEmail = user?.email || normalizeEmail(email);
     if (!isValidEmail(accountEmail)) {
-      setError("Please enter a valid email address.");
+      setError(t.invalidEmailUi);
       return;
     }
     if (message.trim().length < 10) {
-      setError("Please include a short description (at least 10 characters).");
+      setError(t.messageTooShort);
       return;
     }
     setError("");
@@ -49,14 +51,14 @@ export default function FeedbackPage() {
       });
       const payload = (await response.json()) as { ok: boolean; message: string };
       if (!payload.ok) {
-        setError(payload.message);
+        setError(payload.message || t.tryAgain);
       } else {
-        setSuccess(payload.message);
+        setSuccess(t.feedbackThanks);
         setMessage("");
         setScreenshot(null);
       }
     } catch {
-      setError("Please try again in a moment.");
+      setError(t.tryAgain);
     } finally {
       setLoading(false);
     }
@@ -66,9 +68,9 @@ export default function FeedbackPage() {
     <div className="min-h-screen">
       <SiteHeader />
       <main id="main" className="mx-auto max-w-lg px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6">
-        <h1 className="display text-3xl text-ink">Feedback</h1>
+        <h1 className="display text-3xl text-ink">{t.feedback}</h1>
         <p className="mt-3 max-w-md text-base text-ink/80">
-          {USER_MESSAGES.feedbackPrompt} {USER_MESSAGES.sameAccountGroupsAndPlay}
+          {t.feedbackPrompt} {t.sameAccountGroupsAndPlay}
         </p>
 
         <form className="glass mt-6 space-y-5 rounded-[1.5rem] p-4 sm:p-8" onSubmit={onSubmit} noValidate>
@@ -77,7 +79,7 @@ export default function FeedbackPage() {
           ) : (
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold">
-              {USER_MESSAGES.playStoreEmailLabel}
+              {t.playStoreEmailLabel}
             </label>
             <input
               id={emailId}
@@ -92,7 +94,7 @@ export default function FeedbackPage() {
           )}
           <div>
             <label htmlFor={typeId} className="block text-sm font-semibold">
-              Feedback type
+              {t.feedbackType}
             </label>
             <select
               id={typeId}
@@ -104,14 +106,22 @@ export default function FeedbackPage() {
             >
               {FEEDBACK_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {
+                    {
+                      Bug: t.feedbackTypeBug,
+                      Suggestion: t.feedbackTypeSuggestion,
+                      Usability: t.feedbackTypeUsability,
+                      Accessibility: t.feedbackTypeAccessibility,
+                      Other: t.feedbackTypeOther,
+                    }[type]
+                  }
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label htmlFor={messageId} className="block text-sm font-semibold">
-              Message
+              {t.messageLabel}
             </label>
             <textarea
               id={messageId}
@@ -125,7 +135,7 @@ export default function FeedbackPage() {
           </div>
           <div>
             <label htmlFor={screenshotId} className="block text-sm font-semibold">
-              Screenshot (optional)
+              {t.screenshotOptional}
             </label>
             <input
               id={screenshotId}
@@ -150,7 +160,7 @@ export default function FeedbackPage() {
             className="inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full bg-teal px-6 font-semibold text-white hover:bg-teal-dark disabled:opacity-70"
             disabled={loading}
           >
-            {loading ? "Sending…" : "Send feedback"}
+            {loading ? t.sending : t.sendFeedbackBtn}
           </button>
         </form>
       </main>

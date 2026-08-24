@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { TESTER_GROUP_EMAIL, TESTER_GROUP_SEARCH_NAME, USER_MESSAGES } from "@shared/types";
+import { TESTER_GROUP_EMAIL, TESTER_GROUP_SEARCH_NAME } from "@shared/types";
+import { useT } from "../locale";
 
 export default function CopyGroupName() {
+  const t = useT();
   const [copied, setCopied] = useState(false);
 
   async function copyName() {
@@ -24,14 +26,14 @@ export default function CopyGroupName() {
 
   return (
     <div className="rounded-2xl border border-ink/10 bg-foam px-3 py-3">
-      <p className="text-sm text-ink/80">{USER_MESSAGES.searchGroupHint}</p>
+      <p className="text-sm text-ink/80">{t.searchGroupHint}</p>
       <div className="mt-2 flex items-center gap-2">
         <p className="min-w-0 flex-1 break-all text-sm font-semibold text-ink">{TESTER_GROUP_SEARCH_NAME}</p>
         <button
           type="button"
           className="inline-flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-ink/15 text-ink"
           onClick={() => void copyName()}
-          aria-label={USER_MESSAGES.copyGroupName}
+          aria-label={t.copyGroupName}
         >
           {copied ? (
             <span className="text-xs font-semibold text-teal-dark" aria-hidden="true">
@@ -44,7 +46,7 @@ export default function CopyGroupName() {
       </div>
       {copied ? (
         <p className="mt-1 text-xs font-semibold text-teal-dark" role="status">
-          {USER_MESSAGES.groupNameCopied}
+          {t.groupNameCopied}
         </p>
       ) : null}
     </div>
