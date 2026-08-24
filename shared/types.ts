@@ -24,28 +24,46 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   "Other",
 ];
 
+export const GROUP_JOIN_WALKTHROUGH = [
+  "Open the tester group",
+  "Make sure you're signed in with the email above",
+  'Tap "Join group"',
+  "Return to this page",
+  'Tap "Check My Access"',
+] as const;
+
 export const USER_MESSAGES = {
   invalidEmail: "Please enter a valid Google account email address.",
   rateLimited: "Too many requests. Please wait a few minutes and try again.",
   almostReady: "You're almost ready!",
   sameAccount: "Please use the same Google account that you registered with.",
   deviceAccount: "Use the same Google account on your Android device.",
-  joinGroupHint:
-    "Open the group and tap Join group.",
-  joinGroupModalTitle: "Join the tester group",
-  joinGroupModalBody:
-    "On the Google Groups page, tap 'Join group'.",
-  afterGroup:
-    "After joining the tester group, use the same Google account on Google Play.",
-  checkAccessPrompt:
-    "After joining, come back here and check your access.",
-  inTheGroup: "You're in the tester group",
+  joinGroupHint: "Open the group and tap Join group. Use your Play Store account.",
+  joinGroupModalTitle: "Join the AAC Sinhala Tester Group",
+  joinGroupModalLead: "You're one step away from joining the AAC Sinhala beta.",
+  playAccountImportant:
+    "Please use the same Google account you use on Google Play to join the tester group.",
+  playAccountShort: "Please use the same Google account you use on Google Play.",
+  usePlayStoreAccount: "Use your Play Store account to join the group.",
+  usePlayStoreAccountHeading: "Use your Play Store account",
+  sameAccountPlayAndGroup:
+    "Join the tester group and Google Play test with the same Google account.",
+  accountEnteredLabel: "Account you entered",
+  afterJoinCheck: "After joining, come back here and tap Check My Access.",
+  groupsNewTabHint: "Google Groups will open in a new tab.",
+  lookForJoinGroup: "Look for the 'Join group' button",
+  alreadyJoined: "Already joined?",
+  inTheGroup: "Tester group joined",
+  nextPlayTest: "Next: Join the Google Play test",
+  checkAccessNotDetected: "Your membership hasn't been detected yet.",
+  checkAccessNotMember:
+    "Your membership hasn't been detected yet. Make sure you joined the group with the same Google account you use on Google Play, then try again.",
+  checkAccessRetry:
+    "Make sure you joined the group with the same Google account you use on Google Play, then try again.",
   verificationUnavailable: "Membership verification unavailable",
   ready: "You're ready!",
   readyToTest: "You're ready to test AAC Sinhala",
   installHint: "Open Google Play and install AAC-Sinhala.",
-  checkAccessNotMember:
-    "This Google account is not in the tester group yet. Open Tester Group, tap Join group, then try Check My Access again.",
   checkAccessUnavailable:
     "We can't confirm group membership automatically. Finish joining the Google Group, then continue to Google Play with the same account.",
   feedbackThanks: "Thank you. Your feedback was saved privately.",

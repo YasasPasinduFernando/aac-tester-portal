@@ -171,7 +171,7 @@ describe("Check My Access", () => {
     });
     expect(result.membershipVerified).toBe(false);
     expect(result.membershipVerification).toBe("not_member");
-    expect(result.message).toContain("not in the tester group yet");
+    expect(result.message).toContain("hasn't been detected yet");
   });
 
   it("shows You're ready only when membership is verified", async () => {

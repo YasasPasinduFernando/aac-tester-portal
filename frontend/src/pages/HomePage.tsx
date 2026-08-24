@@ -26,17 +26,17 @@ const steps = [
   {
     step: "1",
     title: "Enter your Gmail",
-    body: "Use the same Google account signed in on the Android device that will install the app.",
+    body: "Use the same Google account you use on Google Play and on the Android device that will install the app.",
   },
   {
     step: "2",
-    title: "Join AAC Sinhala Testers",
-    body: "Open the group and tap Join group. Stay signed in with the same Gmail you entered here.",
+    title: "Join Tester Group",
+    body: "A short guide opens first. Then open the group in a new tab, stay signed in with that Gmail, and tap Join group.",
   },
   {
     step: "3",
-    title: "Check your access",
-    body: "Come back to this page and tap Check My Access. Then join the Google Play test and install the app.",
+    title: "Check My Access",
+    body: "Come back here and tap Check My Access. After you’re verified, join the Google Play test and install AAC-Sinhala.",
   },
 ];
 

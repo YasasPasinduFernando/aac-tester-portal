@@ -13,10 +13,12 @@ This is not the Android app. Testers enter a Gmail address, join the tester grou
 
 ```
 Gmail
-  → Open Tester Group (tap Join group)
+  → Join Tester Group (in-site guide)
+  → Open Tester Group in a new tab
+  → Tap Join group on Google Groups
   → Check My Access
   → Join Google Play Test
-  → Install App
+  → Install AAC-Sinhala
 ```
 
 Configured links:

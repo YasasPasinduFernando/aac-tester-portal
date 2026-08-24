@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { isValidEmail, normalizeEmail } from "@shared/email";
 import { USER_MESSAGES } from "@shared/types";
+import GroupJoinModal from "./GroupJoinModal";
 
 interface AccessResponse {
   outcome: "continue" | "invalid_email" | "rate_limited" | "unavailable";
@@ -61,7 +62,6 @@ export default function JoinCard() {
   const emailId = useId();
   const errorId = useId();
   const statusId = useId();
-  const titleId = useId();
   const [saved] = useState(initialSession);
   const [email, setEmail] = useState(saved.email);
   const [error, setError] = useState("");
@@ -77,8 +77,8 @@ export default function JoinCard() {
     "verified" | "not_member" | "unavailable" | null
   >(saved.result?.membershipVerification ?? null);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
-  const openGroupButtonRef = useRef<HTMLButtonElement>(null);
-  const modalOpenRef = useRef<HTMLButtonElement>(null);
+  const joinGroupButtonRef = useRef<HTMLButtonElement>(null);
+  const checkAccessRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     if (!email) return;
@@ -92,16 +92,6 @@ export default function JoinCard() {
       result,
     });
   }, [email, result, groupOpened, playOpened, installOpened, membershipVerified]);
-
-  useEffect(() => {
-    if (!showGroupHelp) return;
-    modalOpenRef.current?.focus();
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") setShowGroupHelp(false);
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showGroupHelp]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -158,7 +148,10 @@ export default function JoinCard() {
     setShowGroupHelp(false);
     void recordEvent("group_join");
     window.open(result.groupJoinUrl, "_blank", "noopener,noreferrer");
-    window.requestAnimationFrame(() => openGroupButtonRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      checkAccessRef.current?.scrollIntoView({ block: "nearest" });
+      joinGroupButtonRef.current?.focus();
+    });
   }
 
   async function openPlayTest() {
@@ -224,6 +217,7 @@ export default function JoinCard() {
 
   const submitted = result?.outcome === "continue";
   const ready = membershipVerified;
+  const notMember = membershipState === "not_member";
   const showPlay = ready || (groupOpened && membershipState === "unavailable");
 
   return (
@@ -274,64 +268,89 @@ export default function JoinCard() {
         <div id={statusId} className="mt-8 space-y-5" aria-live="polite">
           {submitted ? (
             <>
-              <ol className="grid gap-3 sm:grid-cols-2" aria-label="Onboarding steps">
-                <li className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${groupOpened ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
-                  1 → Join AAC Sinhala Testers
+              <ol className="grid gap-3 sm:grid-cols-3" aria-label="Onboarding steps">
+                <li
+                  className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${ready ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}
+                >
+                  1 → Join tester group
                 </li>
-                <li className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${ready ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
-                  2 → Check your access
+                <li className="rounded-2xl bg-mist/70 px-4 py-4 text-center text-sm font-semibold text-ink">
+                  2 → Join Google Play test
+                </li>
+                <li className="rounded-2xl bg-mist/70 px-4 py-4 text-center text-sm font-semibold text-ink">
+                  3 → Install AAC-Sinhala
                 </li>
               </ol>
 
               <article className="rounded-3xl bg-ink px-6 py-6 text-sand">
                 <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">STEP 1</p>
-                <h3 className="display mt-2 text-3xl text-foam">Join AAC Sinhala Testers</h3>
+                <h3 className="display mt-2 text-3xl text-foam">Join the tester group</h3>
                 <p className="mt-3 text-sand/85">{USER_MESSAGES.joinGroupHint}</p>
+                <p className="mt-3 rounded-2xl bg-gold/15 px-4 py-3 text-sm font-semibold text-gold">
+                  {USER_MESSAGES.usePlayStoreAccountHeading}
+                  <span className="mt-1 block font-medium text-sand/85">
+                    {USER_MESSAGES.sameAccountPlayAndGroup}
+                  </span>
+                </p>
                 <button
-                  ref={openGroupButtonRef}
+                  ref={joinGroupButtonRef}
                   type="button"
                   className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-gold px-6 text-base font-semibold text-ink hover:bg-sand sm:w-auto"
                   onClick={() => setShowGroupHelp(true)}
                   aria-haspopup="dialog"
                   aria-expanded={showGroupHelp}
                 >
-                  Open Tester Group
+                  Join Tester Group
                   <span aria-hidden="true">↗</span>
                 </button>
+                <p className="mt-3 text-sm text-sand/70">{USER_MESSAGES.groupsNewTabHint}</p>
               </article>
 
-              <article className="rounded-3xl border border-ink/10 bg-foam px-6 py-6">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal">STEP 2</p>
-                <h3 className="display mt-2 text-3xl text-ink">Check your access</h3>
-                <p className="mt-3 text-ink/80">{USER_MESSAGES.checkAccessPrompt}</p>
-                <p className="mt-2 font-semibold text-ink">Already joined the group?</p>
-                <button
-                  type="button"
-                  className="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-full border-2 border-teal px-6 font-semibold text-teal hover:bg-teal hover:text-white sm:w-auto"
-                  onClick={() => void checkAccess()}
-                  disabled={checking}
-                >
-                  {checking ? "Checking…" : "Check My Access"}
-                </button>
+              <article
+                ref={checkAccessRef}
+                id="check-access"
+                className="rounded-3xl border border-ink/10 bg-foam px-6 py-6"
+              >
+                <h3 className="display text-3xl text-ink">{USER_MESSAGES.alreadyJoined}</h3>
+                <p className="mt-3 text-ink/80">{USER_MESSAGES.afterJoinCheck}</p>
                 {ready ? (
                   <p className="mt-4 text-lg font-semibold text-teal-dark" role="status">
                     ✓ {USER_MESSAGES.inTheGroup}
                   </p>
+                ) : notMember ? (
+                  <div className="mt-4 rounded-2xl border border-clay/30 bg-clay/10 px-4 py-4" role="status">
+                    <p className="font-semibold text-clay-dark">{USER_MESSAGES.checkAccessNotDetected}</p>
+                    <p className="mt-2 text-sm text-ink/80">{USER_MESSAGES.checkAccessRetry}</p>
+                  </div>
                 ) : checkMessage ? (
                   <p className="mt-4 text-sm text-ink/80" role="status">
                     {checkMessage}
                   </p>
                 ) : null}
+                {!ready ? (
+                  <button
+                    type="button"
+                    className="mt-4 inline-flex min-h-14 w-full items-center justify-center rounded-full border-2 border-teal px-6 font-semibold text-teal hover:bg-teal hover:text-white sm:w-auto"
+                    onClick={() => void checkAccess()}
+                    disabled={checking}
+                  >
+                    {checking ? "Checking…" : "Check My Access"}
+                  </button>
+                ) : (
+                  <p className="mt-4 font-semibold text-ink">{USER_MESSAGES.nextPlayTest}</p>
+                )}
               </article>
 
               {showPlay && result.playJoinUrl ? (
                 <article className="rounded-3xl border border-ink/10 bg-foam px-6 py-6">
-                  <h3 className="display text-3xl text-ink">Join Google Play Test</h3>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal">STEP 2</p>
+                  <h3 className="display mt-2 text-3xl text-ink">Join the Google Play test</h3>
                   <p className="mt-3 text-ink/80">
                     {ready
                       ? "Open the closed test and choose Join the test."
                       : "We could not confirm membership automatically. If you already tapped Join group, continue on Google Play with the same account."}
                   </p>
+                  <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.sameAccountPlayAndGroup}</p>
                   <ExternalButton
                     className="mt-5 min-h-14 w-full bg-clay text-white hover:bg-clay-dark sm:w-auto"
                     onClick={() => void openPlayTest()}
@@ -343,7 +362,8 @@ export default function JoinCard() {
 
               {showPlay && result.playStoreUrl ? (
                 <article className="rounded-3xl bg-teal px-6 py-6 text-sand">
-                  <h3 className="display text-3xl text-foam">Install AAC-Sinhala</h3>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">STEP 3</p>
+                  <h3 className="display mt-2 text-3xl text-foam">Install AAC-Sinhala</h3>
                   <p className="mt-3 text-sand/90">{USER_MESSAGES.installHint}</p>
                   <ExternalButton
                     className="mt-5 min-h-14 w-full bg-foam text-teal-dark hover:bg-sand sm:w-auto"
@@ -357,48 +377,12 @@ export default function JoinCard() {
         </div>
       </div>
 
-      {showGroupHelp ? (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-ink/60 p-4 sm:items-center"
-          role="presentation"
-          onClick={() => setShowGroupHelp(false)}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby={titleId}
-            className="glass w-full max-w-md rounded-[1.75rem] p-6 text-ink shadow-2xl"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <h3 id={titleId} className="display text-3xl">
-              {USER_MESSAGES.joinGroupModalTitle}
-            </h3>
-            <p className="mt-3 text-lg text-ink/85">{USER_MESSAGES.joinGroupModalBody}</p>
-            <p className="mt-4 text-sm font-semibold uppercase tracking-[0.14em] text-teal">
-              Make sure you are signed in with:
-            </p>
-            <p className="mt-1 break-all text-lg font-semibold">{email}</p>
-            <div className="mt-6 flex flex-col gap-3">
-              <button
-                ref={modalOpenRef}
-                type="button"
-                className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-gold px-6 font-semibold text-ink hover:bg-sand"
-                onClick={confirmOpenGroup}
-              >
-                Open Tester Group
-                <span aria-hidden="true">↗</span>
-              </button>
-              <button
-                type="button"
-                className="inline-flex min-h-12 items-center justify-center rounded-full border border-ink/20 px-6 font-semibold text-ink/80 hover:bg-mist/50"
-                onClick={() => setShowGroupHelp(false)}
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
+      <GroupJoinModal
+        open={showGroupHelp}
+        email={email}
+        onClose={() => setShowGroupHelp(false)}
+        onOpenGroup={confirmOpenGroup}
+      />
     </section>
   );
 }
