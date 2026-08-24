@@ -1,10 +1,13 @@
 import { useId, useState, type FormEvent } from "react";
-import { FEEDBACK_TYPES } from "@shared/types";
+import { FEEDBACK_TYPES, USER_MESSAGES } from "@shared/types";
 import { isValidEmail, normalizeEmail } from "@shared/email";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
+import { useAuth } from "../auth";
+import { PlayAccountChip } from "../components/AccountWarning";
 
 export default function FeedbackPage() {
+  const { user } = useAuth();
   const emailId = useId();
   const typeId = useId();
   const messageId = useId();
@@ -21,8 +24,8 @@ export default function FeedbackPage() {
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
     setSuccess("");
-    const normalized = normalizeEmail(email);
-    if (!isValidEmail(normalized)) {
+    const accountEmail = user?.email || normalizeEmail(email);
+    if (!isValidEmail(accountEmail)) {
       setError("Please enter a valid email address.");
       return;
     }
@@ -34,12 +37,13 @@ export default function FeedbackPage() {
     setLoading(true);
     try {
       const body = new FormData();
-      body.set("email", normalized);
+      body.set("email", accountEmail);
       body.set("feedbackType", feedbackType);
       body.set("message", message.trim());
       if (screenshot) body.set("screenshot", screenshot);
       const response = await fetch("/api/feedback", {
         method: "POST",
+        credentials: "include",
         headers: { "X-Requested-With": "AACSinhalaPortal" },
         body,
       });
@@ -64,13 +68,16 @@ export default function FeedbackPage() {
       <main id="main" className="mx-auto max-w-3xl px-4 py-16">
         <h1 className="display text-4xl text-ink sm:text-5xl">Feedback</h1>
         <p className="mt-3 max-w-md text-base text-ink/80">
-          Tell us what to fix. Use the Google Play account that installed the app when you can.
+          {USER_MESSAGES.feedbackPrompt} {USER_MESSAGES.sameAccountGroupsAndPlay}
         </p>
 
         <form className="glass mt-10 space-y-5 rounded-[2rem] p-6 sm:p-8" onSubmit={onSubmit} noValidate>
+          {user ? (
+            <PlayAccountChip email={user.email} />
+          ) : (
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold">
-              Google Play account
+              {USER_MESSAGES.playStoreEmailLabel}
             </label>
             <input
               id={emailId}
@@ -82,6 +89,7 @@ export default function FeedbackPage() {
               autoComplete="email"
             />
           </div>
+          )}
           <div>
             <label htmlFor={typeId} className="block text-sm font-semibold">
               Feedback type

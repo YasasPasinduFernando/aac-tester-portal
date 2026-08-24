@@ -7,18 +7,21 @@ Closed-testing onboarding website for **AAC Sinhala**.
 - Play track: `alpha`
 - Google Group: `aac-sinhala-testers@googlegroups.com`
 
-This is not the Android app. Testers enter a Gmail address, join the tester group themselves, then open the Google Play closed-test opt-in page and install AAC-Sinhala from Play.
+This is not the Android app. Testers continue with Google, then join the tester group themselves with that same account, then open the Google Play closed-test opt-in page and install AAC-Sinhala from Play.
 
 ## 1. Tester flow
 
 ```
-Gmail
-  → Join Tester Group (in-site guide)
+Continue with Google
+  → Google account chooser (official Google Identity Services)
+  → Portal stores the verified Google account
+  → Join Tester Group (warning shown first)
   → Open Tester Group in a new tab
-  → Tap Join group on Google Groups
+  → Tap Join group on Google Groups using that same account
   → Check My Access
   → Join Google Play Test
   → Install AAC-Sinhala
+  → Start testing / Feedback
 ```
 
 Configured links:
@@ -29,20 +32,76 @@ Configured links:
 
 The website records:
 
+- Google Sign-In (verified email, subject id, display name)
 - request submitted
 - group join link opened
 - Play link opened
 - feedback submitted
 
-It does **not** mark someone as added to the group or Play merely because they clicked a button.
+It does **not** mark someone as added to the group or Play merely because they clicked a button or signed in.
 
-If membership cannot be verified, the UI says **Membership verification unavailable**.
+Google Sign-In on this site does **not** switch the account used on Google Groups or Google Play. The portal only knows which account the tester authenticated with, then tells them to use that exact account on Groups and Play.
+
+If membership cannot be verified, the UI says **Membership verification is currently unavailable**.
+
+## 1b. Google Sign-In (OAuth / Identity Services)
+
+Architecture: **Google Identity Services ID token** → Cloudflare Worker verifies the JWT against Google's JWKS → Worker sets an **HTTP-only** `aac_session` cookie. No OAuth client secret. No refresh tokens. The browser never receives Worker secrets.
+
+### Google Cloud Console
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create or select a project (consumer Gmail accounts; no Workspace required).
+2. **APIs & Services → OAuth consent screen**
+   - User type: **External**
+   - App name: `AAC Sinhala Tester Portal`
+   - Support email: your address
+   - Scopes: only the default userinfo for GIS Sign-In (`openid`, `email`, `profile`). Do not add extra scopes.
+   - Test users: add Gmail addresses while the app is in Testing. Publish when you are ready for all testers.
+3. **APIs & Services → Credentials → Create credentials → OAuth client ID**
+   - Application type: **Web application**
+   - Name: `AAC Sinhala Tester Portal`
+   - **Authorized JavaScript origins**
+     - `https://aac.yasaboy.com`
+     - `http://localhost:5173` (local Vite)
+     - `http://localhost:8787` (optional `wrangler dev`)
+   - **Authorized redirect URIs**: not required for the GIS popup ID-token flow. Leave empty unless you later switch to a redirect code flow.
+4. Copy the **Client ID** (`….apps.googleusercontent.com`). This is public.
+5. Do **not** put a client secret in the frontend, Git, or Worker vars unless you change to a confidential server flow. This project does not use `GOOGLE_CLIENT_SECRET`.
+
+### Cloudflare Worker
+
+```bash
+npx wrangler secret put SESSION_SECRET
+# paste a long random string (openssl rand -hex 32)
+
+npx wrangler secret put GOOGLE_CLIENT_ID
+# paste the OAuth client ID
+```
+
+`GOOGLE_CLIENT_ID` may also go in `[vars]` because it is public. `SESSION_SECRET` must stay a Worker secret.
+
+Local `.dev.vars` (never commit it):
+
+```
+GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
+SESSION_SECRET=local-dev-only-long-random-value
+RATE_LIMIT_SALT=local-dev-only-long-random-value
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8787
+ENVIRONMENT=development
+```
+
+### Troubleshooting
+
+- **Continue with Google does nothing**: origin is not listed under Authorized JavaScript origins (scheme, host, and port must match exactly).
+- **popup / FedCM blocked**: this Worker sets `Cross-Origin-Opener-Policy: same-origin-allow-popups` for GIS.
+- **Wrong account on Google Groups**: Sign-In does not change the Groups tab. Use **Use a different Google account** on this site if the portal account is wrong, and switch the account inside Google Groups before tapping Join group.
+- **Multiple Google accounts**: the GIS button opens Google's chooser. The portal then shows the verified address. Groups and Play must be signed in with that same address.
+
+## 2. Google Group setup
 
 Google does not document a current Groups URL that auto-joins a member. Official help is: open the group page and tap **Join group**. This portal therefore uses `https://groups.google.com/g/aac-sinhala-testers` and shows a short instruction card first.
 
 To make Join group easier to find on Google's page (manual group settings, not changed by this site): keep **Who can join group** = Anyone on the web can join, and **Who can see group** visible enough that signed-in Gmail users can open the group.
-
-## 2. Google Group setup
 
 In [Google Groups](https://groups.google.com/) for `aac-sinhala-testers@googlegroups.com`:
 
@@ -111,7 +170,7 @@ Local:
 npx wrangler d1 migrations apply aac-tester-portal --local
 ```
 
-`tester_requests` stores onboarding events only. No passwords or OAuth tokens.
+`tester_requests` stores onboarding events and Google identity (email, subject id, display name). No passwords, cookies, refresh tokens, or raw Google ID tokens.
 
 ## 7. Cloudflare deployment
 
@@ -122,7 +181,8 @@ npm run lint
 npm test
 npm run build
 npx wrangler d1 migrations apply aac-tester-portal --remote
-npx wrangler secret put PLAY_TEST_JOIN_URL
+npx wrangler secret put SESSION_SECRET
+npx wrangler secret put GOOGLE_CLIENT_ID
 npx wrangler secret put RATE_LIMIT_SALT
 npx wrangler deploy
 ```
@@ -140,8 +200,13 @@ Protect `/admin*` and `/api/admin*` with Cloudflare Access. Set `CF_ACCESS_TEAM_
 - pending Play joins
 - completed onboarding flows (both links opened — **not** verified membership)
 - feedback count
-- recent requests
-- CSV export
+- tester email
+- authentication status
+- group membership status
+- onboarding status
+- requested_at
+- last_activity_at
+- CSV export (does not include Google subject IDs)
 
 Verified Google Group memberships are shown separately and stay 0 unless a supported read API confirms `hasUser`.
 

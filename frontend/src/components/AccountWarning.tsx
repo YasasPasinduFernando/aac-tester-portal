@@ -23,6 +23,41 @@ export function PlayAccountChip({
   );
 }
 
+export function VerifiedAccountCard({
+  email,
+  displayName,
+  avatarUrl,
+}: {
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}) {
+  return (
+    <div className="rounded-2xl border border-teal/30 bg-foam px-4 py-5 sm:px-5">
+      <p className="text-sm font-semibold text-teal-dark">✓ {USER_MESSAGES.googleVerified}</p>
+      <div className="mt-4 flex items-start gap-3">
+        {avatarUrl ? (
+          <img
+            src={avatarUrl}
+            alt=""
+            className="h-12 w-12 rounded-full object-cover"
+            referrerPolicy="no-referrer"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          {displayName ? <p className="truncate text-sm text-ink/70">{displayName}</p> : null}
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-ink/60">
+            {USER_MESSAGES.playStoreEmailLabel}
+          </p>
+          <p className="mt-1 break-all text-lg font-semibold text-ink">{email}</p>
+        </div>
+      </div>
+      <p className="mt-4 text-sm font-semibold text-ink">{USER_MESSAGES.sameAccountGroupsAndPlay}</p>
+      <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.sameAccountPlayAndGroup}</p>
+    </div>
+  );
+}
+
 function WarningIcon() {
   return (
     <svg viewBox="0 0 24 24" className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true">
@@ -47,8 +82,9 @@ export function AccountMismatchWarning({ email }: { email: string }) {
         <WarningIcon />
         <span>{USER_MESSAGES.playAccountImportant}</span>
       </p>
-      <p className="mt-3 text-sm text-ink/80">{USER_MESSAGES.beforeJoiningSignedIn}</p>
+      <p className="mt-3 text-sm text-ink/80">{USER_MESSAGES.authenticatedAccountIs}</p>
       <p className="mt-1 break-all text-base font-semibold text-ink sm:text-lg">{email}</p>
+      <p className="mt-3 text-sm leading-snug text-ink/80">{USER_MESSAGES.whenJoiningExactAccount}</p>
       <p className="mt-3 text-sm leading-snug text-ink/80">{USER_MESSAGES.switchIfAnotherAccount}</p>
     </div>
   );

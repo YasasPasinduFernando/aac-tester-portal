@@ -146,7 +146,7 @@ describe("Check My Access", () => {
     });
     expect(result.membershipVerified).toBe(false);
     expect(result.membershipVerification).toBe("unavailable");
-    expect(result.message).toContain("can't confirm group membership automatically");
+    expect(result.message).toContain("Membership verification is currently unavailable");
     expect(JSON.stringify(result)).not.toContain("You have been added");
   });
 
@@ -171,7 +171,7 @@ describe("Check My Access", () => {
     });
     expect(result.membershipVerified).toBe(false);
     expect(result.membershipVerification).toBe("not_member");
-    expect(result.message).toContain("hasn't been detected yet");
+    expect(result.message).toContain("couldn't find this Google account");
   });
 
   it("shows You're ready only when membership is verified", async () => {

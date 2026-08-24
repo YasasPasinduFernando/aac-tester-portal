@@ -17,6 +17,11 @@ function tester(patch: Partial<TesterRecord>): TesterRecord {
     membership_verified: 0,
     membership_verified_at: null,
     notes: null,
+    google_email: null,
+    google_subject_id: null,
+    display_name: null,
+    avatar_url: null,
+    authenticated_at: null,
     ...patch,
   };
 }

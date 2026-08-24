@@ -1,4 +1,12 @@
 import { authenticateAdmin } from "./admin";
+import {
+  authConfig,
+  currentAuth,
+  requireTesterSession,
+  signInWithGoogle,
+  signOut,
+  toClientPayload,
+} from "./auth";
 import { runMaintenance } from "./cleanup";
 import { inactivityDays, playJoinUrl, playStoreUrl, type Env } from "./env";
 import { submitFeedback } from "./feedback";
@@ -8,6 +16,7 @@ import { d1RateLimitStore } from "./rate-limit";
 import { corsHeaders, hashIp, isAllowedOrigin, rejectCsrf, requestOrigin } from "./security";
 import { d1Store } from "./store";
 import { recordJoinEvent, requestAccess, checkAccess } from "./testers";
+import { playStepsUnlocked } from "../../shared/types";
 
 const MAX_JSON_BYTES = 32_768;
 
@@ -37,6 +46,35 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       return jsonResponse({ ok: true, service: "aac-tester-portal" }, { headers: cors });
+    }
+    if (url.pathname === "/api/auth/config" && request.method === "GET") {
+      return jsonResponse(authConfig(env), { headers: cors });
+    }
+    if (url.pathname === "/api/auth/google" && request.method === "POST") {
+      try {
+        const body = await readJson(request);
+        return withCors(
+          await signInWithGoogle({
+            credential: body.credential,
+            nonce: body.nonce,
+            env,
+            store: d1Store(env.DB),
+            rateLimit: d1RateLimitStore(env.DB),
+            ipHash: await hashIp(env, request),
+            now: new Date(),
+            request,
+          }),
+          cors,
+        );
+      } catch {
+        return jsonResponse({ ok: false, message: "Please try again in a moment." }, { status: 503, headers: cors });
+      }
+    }
+    if (url.pathname === "/api/auth/me" && request.method === "GET") {
+      return withCors(await currentAuth({ request, env, store: d1Store(env.DB) }), cors);
+    }
+    if (url.pathname === "/api/auth/logout" && request.method === "POST") {
+      return withCors(await signOut(request), cors);
     }
     if (url.pathname === "/api/testers/request" && request.method === "POST") {
       try {
@@ -142,11 +180,11 @@ async function optionalMembershipVerified(env: Env, email: string): Promise<bool
 }
 
 async function handleTesterRequest(request: Request, env: Env): Promise<Response> {
-  const body = await readJson(request);
-  const email = typeof body.email === "string" ? body.email : "";
-  const membershipVerified = await optionalMembershipVerified(env, email);
+  const session = await requireTesterSession(request, env);
+  if (session instanceof Response) return session;
+  const membershipVerified = await optionalMembershipVerified(env, session.email);
   const result = await requestAccess({
-    email: body.email,
+    email: session.email,
     ipHash: await hashIp(env, request),
     now: new Date(),
     store: d1Store(env.DB),
@@ -156,18 +194,24 @@ async function handleTesterRequest(request: Request, env: Env): Promise<Response
     playJoinUrl: playJoinUrl(env),
     playStoreUrl: playStoreUrl(env),
     membershipVerified,
+    google: {
+      email: session.email,
+      subjectId: session.subjectId,
+      displayName: session.displayName,
+      avatarUrl: session.avatarUrl,
+    },
   });
-
   const status =
     result.outcome === "invalid_email" ? 400 : result.outcome === "rate_limited" ? 429 : 200;
-
-  return jsonResponse(result, { status });
+  return jsonResponse(toClientPayload(session, result), { status });
 }
 
 async function handleTesterEvent(request: Request, env: Env): Promise<Response> {
+  const session = await requireTesterSession(request, env);
+  if (session instanceof Response) return session;
   const body = await readJson(request);
   const result = await recordJoinEvent({
-    email: body.email,
+    email: session.email,
     event: body.event,
     now: new Date(),
     store: d1Store(env.DB),
@@ -186,7 +230,8 @@ async function handleTesterEvent(request: Request, env: Env): Promise<Response> 
 }
 
 async function handleAccessCheck(request: Request, env: Env): Promise<Response> {
-  const body = await readJson(request);
+  const session = await requireTesterSession(request, env);
+  if (session instanceof Response) return session;
   const allowed = await d1RateLimitStore(env.DB).consume(
     `access:${await hashIp(env, request)}`,
     8,
@@ -200,7 +245,7 @@ async function handleAccessCheck(request: Request, env: Env): Promise<Response> 
     );
   }
   const result = await checkAccess({
-    email: body.email,
+    email: session.email,
     now: new Date(),
     store: d1Store(env.DB),
     groups: groupsBridge(env),
@@ -209,10 +254,22 @@ async function handleAccessCheck(request: Request, env: Env): Promise<Response> 
     playJoinUrl: playJoinUrl(env),
     playStoreUrl: playStoreUrl(env),
   });
-  return jsonResponse(result, { status: result.ok ? 200 : 400 });
+  const play = playStepsUnlocked(result.membershipVerified)
+    ? { playJoinUrl: result.playJoinUrl, playStoreUrl: result.playStoreUrl }
+    : { playJoinUrl: null, playStoreUrl: null };
+  return jsonResponse(
+    {
+      ...result,
+      email: session.email,
+      ...play,
+    },
+    { status: result.ok ? 200 : 400 },
+  );
 }
 
 async function handleFeedback(request: Request, env: Env): Promise<Response> {
+  const session = await requireTesterSession(request, env);
+  const sessionEmail = session instanceof Response ? null : session.email;
   const contentType = request.headers.get("Content-Type") || "";
   let email: unknown;
   let feedbackType: unknown;
@@ -221,7 +278,7 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
 
   if (contentType.includes("multipart/form-data")) {
     const form = await request.formData();
-    email = form.get("email");
+    email = sessionEmail ?? form.get("email");
     feedbackType = form.get("feedbackType");
     message = form.get("message");
     const file = form.get("screenshot");
@@ -233,7 +290,7 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
     }
   } else {
     const body = await readJson(request);
-    email = body.email;
+    email = sessionEmail ?? body.email;
     feedbackType = body.feedbackType;
     message = body.message;
   }
@@ -263,7 +320,19 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
   }
   const store = d1Store(env.DB);
   const stats = await store.adminStats();
-  const testers = await store.listTesters();
+  const testers = (await store.listTesters()).map((row) => ({
+    email: row.email,
+    status: row.status,
+    requested_at: row.requested_at,
+    last_activity_at: row.last_activity_at,
+    group_join_started_at: row.group_join_started_at,
+    play_join_started_at: row.play_join_started_at,
+    feedback_submitted: row.feedback_submitted,
+    membership_verified: row.membership_verified,
+    authenticated: Boolean(row.authenticated_at),
+    authenticated_at: row.authenticated_at,
+    display_name: row.display_name,
+  }));
   return jsonResponse({
     admin: identity.email,
     stats,
@@ -279,6 +348,7 @@ async function handleAdminExport(request: Request, env: Env): Promise<Response> 
   const testers = await d1Store(env.DB).listTesters();
   const header = [
     "email",
+    "authenticated",
     "status",
     "requested_at",
     "group_join_started_at",
@@ -292,6 +362,7 @@ async function handleAdminExport(request: Request, env: Env): Promise<Response> 
     ...testers.map((row) =>
       [
         csv(row.email),
+        row.authenticated_at ? "yes" : "no",
         csv(row.status),
         csv(row.requested_at),
         csv(row.group_join_started_at ?? ""),

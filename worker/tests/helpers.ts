@@ -9,6 +9,11 @@ export class MemoryStore implements Store {
     return this.testers.get(email) ?? null;
   }
 
+  async getTesterBySubject(subjectId: string): Promise<TesterRecord | null> {
+    if (!subjectId) return null;
+    return [...this.testers.values()].find((row) => row.google_subject_id === subjectId) ?? null;
+  }
+
   async upsertTester(record: TesterRecord): Promise<void> {
     const existing = this.testers.get(record.email);
     if (!existing) {
@@ -25,6 +30,11 @@ export class MemoryStore implements Store {
       play_join_started_at: existing.play_join_started_at ?? record.play_join_started_at,
       feedback_submitted: Math.max(existing.feedback_submitted, record.feedback_submitted),
       membership_verified: Math.max(existing.membership_verified, record.membership_verified),
+      google_email: record.google_email ?? existing.google_email,
+      google_subject_id: record.google_subject_id ?? existing.google_subject_id,
+      display_name: record.display_name ?? existing.display_name,
+      avatar_url: record.avatar_url ?? existing.avatar_url,
+      authenticated_at: existing.authenticated_at ?? record.authenticated_at,
     });
   }
 

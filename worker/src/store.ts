@@ -14,6 +14,11 @@ export interface TesterRecord {
   membership_verified: number;
   membership_verified_at: string | null;
   notes: string | null;
+  google_email: string | null;
+  google_subject_id: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  authenticated_at: string | null;
 }
 
 export interface FeedbackRecord {
@@ -37,6 +42,7 @@ export interface AdminStats {
 
 export interface Store {
   getTester(email: string): Promise<TesterRecord | null>;
+  getTesterBySubject(subjectId: string): Promise<TesterRecord | null>;
   upsertTester(record: TesterRecord): Promise<void>;
   updateTester(email: string, patch: Partial<TesterRecord>): Promise<void>;
   listTesters(): Promise<TesterRecord[]>;
@@ -66,6 +72,11 @@ export function emptyTester(email: string, now: Date): TesterRecord {
     membership_verified: 0,
     membership_verified_at: null,
     notes: null,
+    google_email: email,
+    google_subject_id: null,
+    display_name: null,
+    avatar_url: null,
+    authenticated_at: null,
   };
 }
 
@@ -90,14 +101,23 @@ export function d1Store(db: D1Database): Store {
         .first<TesterRecord>();
     },
 
+    async getTesterBySubject(subjectId) {
+      if (!subjectId) return null;
+      return db
+        .prepare("SELECT * FROM tester_requests WHERE google_subject_id = ?")
+        .bind(subjectId)
+        .first<TesterRecord>();
+    },
+
     async upsertTester(record) {
       await db
         .prepare(
           `INSERT INTO tester_requests (
             id, email, status, requested_at, group_join_started_at, play_join_started_at,
             feedback_submitted, last_activity_at, created_at, updated_at,
-            membership_verified, membership_verified_at, notes
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            membership_verified, membership_verified_at, notes,
+            google_email, google_subject_id, display_name, avatar_url, authenticated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             status = excluded.status,
             group_join_started_at = COALESCE(tester_requests.group_join_started_at, excluded.group_join_started_at),
@@ -107,7 +127,12 @@ export function d1Store(db: D1Database): Store {
             updated_at = excluded.updated_at,
             membership_verified = MAX(tester_requests.membership_verified, excluded.membership_verified),
             membership_verified_at = COALESCE(excluded.membership_verified_at, tester_requests.membership_verified_at),
-            notes = excluded.notes`,
+            notes = excluded.notes,
+            google_email = COALESCE(excluded.google_email, tester_requests.google_email),
+            google_subject_id = COALESCE(excluded.google_subject_id, tester_requests.google_subject_id),
+            display_name = COALESCE(excluded.display_name, tester_requests.display_name),
+            avatar_url = COALESCE(excluded.avatar_url, tester_requests.avatar_url),
+            authenticated_at = COALESCE(tester_requests.authenticated_at, excluded.authenticated_at)`,
         )
         .bind(
           record.id,
@@ -123,6 +148,11 @@ export function d1Store(db: D1Database): Store {
           record.membership_verified,
           record.membership_verified_at,
           record.notes,
+          record.google_email,
+          record.google_subject_id,
+          record.display_name,
+          record.avatar_url,
+          record.authenticated_at,
         )
         .run();
     },
@@ -145,7 +175,9 @@ export function d1Store(db: D1Database): Store {
           `UPDATE tester_requests SET
             status = ?, group_join_started_at = ?, play_join_started_at = ?,
             feedback_submitted = ?, last_activity_at = ?, updated_at = ?,
-            membership_verified = ?, membership_verified_at = ?, notes = ?
+            membership_verified = ?, membership_verified_at = ?, notes = ?,
+            google_email = ?, google_subject_id = ?, display_name = ?,
+            avatar_url = ?, authenticated_at = ?
            WHERE email = ?`,
         )
         .bind(
@@ -158,6 +190,11 @@ export function d1Store(db: D1Database): Store {
           next.membership_verified,
           next.membership_verified_at,
           next.notes,
+          next.google_email,
+          next.google_subject_id,
+          next.display_name,
+          next.avatar_url,
+          next.authenticated_at,
           email,
         )
         .run();

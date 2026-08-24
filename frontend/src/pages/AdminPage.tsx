@@ -18,11 +18,14 @@ interface AdminPayload {
     email: string;
     status: string;
     requested_at: string;
+    last_activity_at: string | null;
     group_join_started_at: string | null;
     play_join_started_at: string | null;
     feedback_submitted: number;
     membership_verified: number;
-    last_activity_at: string | null;
+    authenticated?: boolean;
+    authenticated_at?: string | null;
+    display_name?: string | null;
   }>;
 }
 
@@ -125,22 +128,24 @@ export default function AdminPage() {
               <thead>
                 <tr className="border-b border-ink/15">
                   <th className="py-3 pr-4">Email</th>
+                  <th className="py-3 pr-4">Signed in</th>
                   <th className="py-3 pr-4">Status</th>
                   <th className="py-3 pr-4">Requested</th>
-                  <th className="py-3 pr-4">Group link</th>
-                  <th className="py-3 pr-4">Play link</th>
-                  <th className="py-3 pr-4">Feedback</th>
+                  <th className="py-3 pr-4">Last activity</th>
+                  <th className="py-3 pr-4">Group</th>
+                  <th className="py-3 pr-4">Membership</th>
                 </tr>
               </thead>
               <tbody>
                 {data.testers.map((row) => (
                   <tr key={row.email} className="border-b border-ink/10">
                     <td className="py-3 pr-4">{row.email}</td>
+                    <td className="py-3 pr-4">{row.authenticated ? "Yes" : "No"}</td>
                     <td className="py-3 pr-4">{row.status}</td>
                     <td className="py-3 pr-4">{row.requested_at}</td>
+                    <td className="py-3 pr-4">{row.last_activity_at ?? "—"}</td>
                     <td className="py-3 pr-4">{row.group_join_started_at ? "Opened" : "—"}</td>
-                    <td className="py-3 pr-4">{row.play_join_started_at ? "Opened" : "—"}</td>
-                    <td className="py-3 pr-4">{row.feedback_submitted ? "Yes" : "No"}</td>
+                    <td className="py-3 pr-4">{row.membership_verified ? "Verified" : "Not verified"}</td>
                   </tr>
                 ))}
               </tbody>

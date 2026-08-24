@@ -21,6 +21,8 @@ ENVIRONMENT = "production"
 
 # PLAY_TEST_JOIN_URL and PLAY_STORE_URL are public Play links, set in [vars].
 # RATE_LIMIT_SALT and Cloudflare Access values stay Worker secrets.
+# GOOGLE_CLIENT_ID is public (GIS). Set as a var or secret after creating the OAuth client.
+# SESSION_SECRET is private: npx wrangler secret put SESSION_SECRET
 
 [[d1_databases]]
 binding = "DB"

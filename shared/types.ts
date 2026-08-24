@@ -59,44 +59,67 @@ export const USER_MESSAGES = {
   deviceAccount: "Use the same Play Store account on your Android device.",
   playStoreEveryone:
     "Everyone must use the Google account they use on Google Play.",
-  playStoreEmailLabel: "Google Play account",
+  playStoreEmailLabel: "Your Google Play account",
   playStoreEmailHint:
-    "Enter the same Gmail that is signed in on Google Play.",
+    "This is the Google account used on your Android device.",
+  joinBetaTitle: "Join the AAC Sinhala Beta",
+  joinBetaSubtitle: "Use the Google account you use on your Android device.",
+  googleVerified: "Google account verified",
+  googleSignInFailed: "Google sign-in didn't complete. Please try again.",
+  googleSignInUnavailable: "Google Sign-In is not configured yet.",
+  googleMissingEmail: "Google did not share an email for this account.",
+  signInRequired: "Please continue with Google to keep going.",
+  useDifferentAccount: "Use a different Google account",
+  signOut: "Sign out",
   joinGroupHint: "Open the group and tap Join group. Use your Play Store account.",
   joinGroupModalTitle: "Join AAC Sinhala Testers",
   joinGroupModalLead: "You're one step away from joining the AAC Sinhala beta.",
-  playAccountImportant:
-    "IMPORTANT: Use the same Google account you use on Google Play.",
+  playAccountImportant: "Use the same Google account",
   playAccountShort: "Please use the same Google account you use on Google Play.",
   usePlayStoreAccount: "Use your Play Store account to join the group.",
   usePlayStoreAccountHeading: "Use your Play Store account",
   sameAccountPlayAndGroup:
-    "Join the tester group and Google Play test with the same Google account.",
-  accountEnteredLabel: "Google Play account",
+    "Use this same account to join the tester group and Google Play test.",
+  sameAccountGroupsAndPlay:
+    "Use the same Google account for the tester group and Google Play.",
+  accountEnteredLabel: "Your Google Play account",
+  authenticatedAccountIs: "The account you authenticated with is:",
+  whenJoiningExactAccount:
+    "When you join the tester group, make sure Google Groups is signed in with this exact account.",
+  groupsSignedInWarning:
+    "Please make sure Google Groups is signed in with this same account.",
+  useThisSameAccountForGroup:
+    "Use this same Google account when joining the tester group.",
   beforeJoiningSignedIn:
     "Before joining, make sure Google Groups is signed in with:",
   switchIfAnotherAccount:
-    "If another Google account is currently active in your browser, switch to the account above before joining the group.",
+    "If another Google account is active in Google Groups, switch to the account shown above before tapping Join group.",
   afterJoinCheck: "After joining, come back here and tap Check My Access.",
   groupsNewTabHint: "Google Groups will open in a new tab. This page stays open.",
   lookForJoinGroup: "Look for the 'Join group' button",
   alreadyJoined: "Already joined?",
-  inTheGroup: "Tester group joined",
-  nextPlayTest: "Next: Join Google Play Test",
+  inTheGroup: "You're in the tester group",
+  nextPlayTest: "Join the Google Play test",
+  joinPlayTestHint: "Now open the Google Play testing page using the same Google account.",
+  playUsingSame: "Make sure Google Play is using the same account.",
+  installTitle: "Install AAC-Sinhala",
+  installHint: "Once you have joined the test, install AAC-Sinhala from Google Play.",
+  startTestingTitle: "Start testing",
+  startTestingHint: "Open AAC-Sinhala and try the communication features.",
+  feedbackPrompt: "Found a bug or have a suggestion?",
+  sendFeedback: "Send Feedback",
   wrongAccountHeading: "Using the wrong Google account?",
   wrongAccountHelp:
     "Go back to Google Groups, switch to the Google account shown above, and join the tester group again.",
-  checkAccessNotDetected: "Your membership hasn't been detected yet.",
+  checkAccessNotDetected: "We couldn't find this Google account in the tester group yet.",
   checkAccessNotMember:
-    "Your membership hasn't been detected yet. Make sure you joined the group with the same Google account you use on Google Play, then try again.",
+    "We couldn't find this Google account in the tester group yet.",
   checkAccessRetry:
-    "Make sure you joined the group with the same Google account you use on Google Play, then try again.",
+    "Make sure you joined the group with the Google account shown above, then try again.",
   verificationUnavailable: "Membership verification unavailable",
   ready: "You're ready!",
   readyToTest: "You're ready to test AAC Sinhala",
-  installHint: "Open Google Play and install AAC-Sinhala.",
-  checkAccessUnavailable:
-    "We can't confirm group membership automatically. Finish joining the Google Group, then continue to Google Play with the same account.",
+  checkAccessUnavailable: "Membership verification is currently unavailable.",
   feedbackThanks: "Thank you. Your feedback was saved privately.",
 } as const;
 
@@ -122,6 +145,10 @@ export function bothJoinLinksOpened(
 
 export function alreadyJoinedPrompt(email: string): string {
   return `Already joined with ${email}?`;
+}
+
+export function playStepsUnlocked(membershipVerified: boolean): boolean {
+  return membershipVerified === true;
 }
 
 export function defaultGroupJoinUrl(groupEmail: string): string {

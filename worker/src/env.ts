@@ -14,6 +14,8 @@ export interface Env {
   RATE_LIMIT_SALT: string;
   CF_ACCESS_TEAM_DOMAIN?: string;
   CF_ACCESS_AUD?: string;
+  GOOGLE_CLIENT_ID?: string;
+  SESSION_SECRET?: string;
 }
 
 export function parseAllowedOrigins(value: string | undefined): string[] {

@@ -10,6 +10,7 @@ import {
 import type { GroupBridge } from "./groups";
 import type { RateLimitStore } from "./rate-limit";
 import { emptyTester, refreshStatus, type Store, type TesterRecord } from "./store";
+import type { GoogleIdentity } from "./google-auth";
 
 export interface AccessResult {
   outcome: AccessOutcome;
@@ -41,15 +42,19 @@ export async function requestAccess(input: {
   playJoinUrl: string | null;
   playStoreUrl?: string | null;
   membershipVerified?: boolean;
+  skipRateLimit?: boolean;
+  google?: GoogleIdentity;
 }): Promise<AccessResult> {
-  const allowed = await input.rateLimit.consume(
-    `tester:${input.ipHash}`,
-    REQUEST_LIMIT,
-    REQUEST_WINDOW_MS,
-    input.now.getTime(),
-  );
-  if (!allowed) {
-    return emptyResult("rate_limited", USER_MESSAGES.rateLimited);
+  if (!input.skipRateLimit) {
+    const allowed = await input.rateLimit.consume(
+      `tester:${input.ipHash}`,
+      REQUEST_LIMIT,
+      REQUEST_WINDOW_MS,
+      input.now.getTime(),
+    );
+    if (!allowed) {
+      return emptyResult("rate_limited", USER_MESSAGES.rateLimited);
+    }
   }
 
   const email = parseEmailInput(input.email);
@@ -60,6 +65,7 @@ export async function requestAccess(input: {
   const existing = await input.store.getTester(email);
   const iso = input.now.toISOString();
   const verified = existing?.membership_verified === 1 || input.membershipVerified === true;
+  const google = input.google;
 
   const record: TesterRecord = refreshStatus({
     ...(existing ?? emptyTester(email, input.now)),
@@ -69,7 +75,12 @@ export async function requestAccess(input: {
     membership_verified_at: verified
       ? (existing?.membership_verified_at ?? iso)
       : existing?.membership_verified_at ?? null,
-    notes: verified ? null : "Membership verification unavailable",
+    notes: verified ? null : existing?.notes ?? "Membership verification unavailable",
+    google_email: google?.email ?? existing?.google_email ?? email,
+    google_subject_id: google?.subjectId ?? existing?.google_subject_id ?? null,
+    display_name: google?.displayName ?? existing?.display_name ?? null,
+    avatar_url: google?.avatarUrl ?? existing?.avatar_url ?? null,
+    authenticated_at: google ? (existing?.authenticated_at ?? iso) : existing?.authenticated_at ?? null,
   });
 
   await input.store.upsertTester(record);
