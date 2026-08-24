@@ -3,6 +3,7 @@ export interface Env {
   ASSETS: Fetcher;
   FEEDBACK_BUCKET?: R2Bucket;
   PLAY_TEST_JOIN_URL?: string;
+  PLAY_STORE_URL?: string;
   GOOGLE_GROUP_EMAIL: string;
   GOOGLE_GROUP_JOIN_URL?: string;
   APPS_SCRIPT_URL?: string;
@@ -27,7 +28,15 @@ export function inactivityDays(env: Env): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : 90;
 }
 
+export function optionalUrl(value: string | undefined): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function playJoinUrl(env: Env): string | null {
-  const value = env.PLAY_TEST_JOIN_URL?.trim();
-  return value ? value : null;
+  return optionalUrl(env.PLAY_TEST_JOIN_URL);
+}
+
+export function playStoreUrl(env: Env): string | null {
+  return optionalUrl(env.PLAY_STORE_URL);
 }

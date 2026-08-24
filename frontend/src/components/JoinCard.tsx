@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { isValidEmail, normalizeEmail } from "@shared/email";
 import { USER_MESSAGES } from "@shared/types";
 
@@ -7,24 +7,84 @@ interface AccessResponse {
   message: string;
   detail?: string;
   membershipVerified: boolean;
-  membershipVerification: "verified" | "unavailable";
+  membershipVerification: "verified" | "not_member" | "unavailable";
   groupJoinUrl: string | null;
   playJoinUrl: string | null;
+  playStoreUrl: string | null;
   groupJoinStarted: boolean;
   playJoinStarted: boolean;
-  bothLinksOpened: boolean;
+}
+
+interface SessionState {
+  email: string;
+  submitted: boolean;
+  groupOpened: boolean;
+  playOpened: boolean;
+  installOpened: boolean;
+  membershipVerified: boolean;
+  result: AccessResponse | null;
+}
+
+const SESSION_KEY = "aac-tester-onboarding";
+
+function readSession(): SessionState | null {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SessionState;
+  } catch {
+    return null;
+  }
+}
+
+function writeSession(state: SessionState) {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(state));
+}
+
+function emptySession(): SessionState {
+  return {
+    email: "",
+    submitted: false,
+    groupOpened: false,
+    playOpened: false,
+    installOpened: false,
+    membershipVerified: false,
+    result: null,
+  };
+}
+
+function initialSession(): SessionState {
+  return readSession() ?? emptySession();
 }
 
 export default function JoinCard() {
   const emailId = useId();
   const errorId = useId();
   const statusId = useId();
-  const [email, setEmail] = useState("");
+  const [saved] = useState(initialSession);
+  const [email, setEmail] = useState(saved.email);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<AccessResponse | null>(null);
-  const [groupOpened, setGroupOpened] = useState(false);
-  const [playOpened, setPlayOpened] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkMessage, setCheckMessage] = useState("");
+  const [result, setResult] = useState<AccessResponse | null>(saved.result);
+  const [groupOpened, setGroupOpened] = useState(saved.groupOpened);
+  const [playOpened, setPlayOpened] = useState(saved.playOpened);
+  const [installOpened, setInstallOpened] = useState(saved.installOpened);
+  const [membershipVerified, setMembershipVerified] = useState(saved.membershipVerified);
+
+  useEffect(() => {
+    if (!email) return;
+    writeSession({
+      email,
+      submitted: Boolean(result),
+      groupOpened,
+      playOpened,
+      installOpened,
+      membershipVerified,
+      result,
+    });
+  }, [email, result, groupOpened, playOpened, installOpened, membershipVerified]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -35,6 +95,7 @@ export default function JoinCard() {
       return;
     }
     setError("");
+    setCheckMessage("");
     setLoading(true);
     try {
       const response = await fetch("/api/testers/request", {
@@ -46,9 +107,11 @@ export default function JoinCard() {
         body: JSON.stringify({ email: normalized }),
       });
       const payload = (await response.json()) as AccessResponse;
+      setEmail(normalized);
       setResult(payload);
       setGroupOpened(payload.groupJoinStarted);
       setPlayOpened(payload.playJoinStarted);
+      setMembershipVerified(payload.membershipVerified);
       if (payload.outcome === "invalid_email" || payload.outcome === "rate_limited") {
         setError(payload.message);
       }
@@ -78,16 +141,67 @@ export default function JoinCard() {
     window.open(result.groupJoinUrl, "_blank", "noopener,noreferrer");
   }
 
-  async function openPlay() {
+  async function openPlayTest() {
     if (!result?.playJoinUrl) return;
     setPlayOpened(true);
     void recordEvent("play_join");
     window.open(result.playJoinUrl, "_blank", "noopener,noreferrer");
   }
 
+  function openInstall() {
+    if (!result?.playStoreUrl) return;
+    setInstallOpened(true);
+    window.open(result.playStoreUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function checkAccess() {
+    const normalized = normalizeEmail(email);
+    if (!isValidEmail(normalized)) {
+      setError(USER_MESSAGES.invalidEmail);
+      return;
+    }
+    setChecking(true);
+    setCheckMessage("");
+    try {
+      const response = await fetch("/api/testers/access", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "AACSinhalaPortal",
+        },
+        body: JSON.stringify({ email: normalized }),
+      });
+      const payload = (await response.json()) as {
+        ok: boolean;
+        membershipVerified: boolean;
+        membershipVerification: "verified" | "not_member" | "unavailable";
+        message: string;
+        playJoinUrl: string | null;
+        playStoreUrl: string | null;
+        groupJoinUrl: string | null;
+      };
+      setMembershipVerified(payload.membershipVerified);
+      setCheckMessage(payload.message);
+      if (payload.ok && result) {
+        setResult({
+          ...result,
+          membershipVerified: payload.membershipVerified,
+          membershipVerification: payload.membershipVerification,
+          playJoinUrl: payload.playJoinUrl ?? result.playJoinUrl,
+          playStoreUrl: payload.playStoreUrl ?? result.playStoreUrl,
+          groupJoinUrl: payload.groupJoinUrl ?? result.groupJoinUrl,
+        });
+      }
+    } catch {
+      setCheckMessage(USER_MESSAGES.checkAccessUnavailable);
+      setMembershipVerified(false);
+    } finally {
+      setChecking(false);
+    }
+  }
+
   const submitted = result?.outcome === "continue";
-  const showStep2 = submitted && groupOpened;
-  const showReady = submitted && groupOpened && playOpened;
+  const ready = membershipVerified;
 
   return (
     <section id="join" className="scroll-mt-28" aria-labelledby="join-title">
@@ -116,7 +230,7 @@ export default function JoinCard() {
               onChange={(event) => setEmail(event.target.value)}
               aria-invalid={error ? true : undefined}
               aria-describedby={error ? errorId : undefined}
-              className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3 text-base text-ink shadow-inner outline-none"
+              className="mt-2 w-full rounded-2xl border border-ink/15 bg-foam px-4 py-3.5 text-base text-ink shadow-inner outline-none"
               placeholder="you@gmail.com"
             />
             {error ? (
@@ -127,7 +241,7 @@ export default function JoinCard() {
           </div>
           <button
             type="submit"
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70 sm:w-auto"
             disabled={loading}
           >
             {loading ? "Saving your request…" : "Get Test Access"}
@@ -138,84 +252,112 @@ export default function JoinCard() {
           {submitted ? (
             <>
               <div>
-                <p className="display text-3xl text-ink">{USER_MESSAGES.almostReady}</p>
-                <p className="mt-2 text-ink/80">{USER_MESSAGES.sameAccount}</p>
+                <p className="display text-3xl text-ink">{ready ? USER_MESSAGES.ready : USER_MESSAGES.almostReady}</p>
+                <p className="mt-2 text-ink/80">{USER_MESSAGES.afterGroup}</p>
               </div>
 
-              <ol className="grid gap-3 sm:grid-cols-2" aria-label="Onboarding steps">
-                <li className={`rounded-2xl px-4 py-3 text-sm font-semibold ${groupOpened ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
-                  1. Join Tester Group
+              <ol className="grid gap-3 sm:grid-cols-3" aria-label="Onboarding steps">
+                <li className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${groupOpened || ready ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
+                  1 → Join Tester Group
                 </li>
-                <li className={`rounded-2xl px-4 py-3 text-sm font-semibold ${playOpened ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
-                  2. Join Google Play Test
+                <li className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${playOpened || ready ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
+                  2 → Join Google Play Test
+                </li>
+                <li className={`rounded-2xl px-4 py-4 text-center text-sm font-semibold ${installOpened ? "bg-teal text-white" : "bg-mist/70 text-ink"}`}>
+                  3 → Install AAC-Sinhala
                 </li>
               </ol>
 
               <article className="rounded-3xl bg-ink px-6 py-6 text-sand">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">Step 1 — Join the AAC Sinhala Tester Group</p>
-                <h3 className="display mt-2 text-3xl text-foam">Join the Tester Group</h3>
-                <p className="mt-3 text-sand/85">
-                  Join the AAC Sinhala tester group using the same Google account you will use on Google Play.
-                </p>
-                <button
-                  type="button"
-                  className="mt-5 inline-flex min-h-12 items-center rounded-full bg-gold px-5 font-semibold text-ink hover:bg-sand"
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">1 → Join Tester Group</p>
+                <h3 className="display mt-2 text-3xl text-foam">Join Tester Group</h3>
+                <p className="mt-3 text-sand/85">{USER_MESSAGES.joinGroupHint}</p>
+                <ExternalButton
+                  className="mt-5 min-h-14 w-full bg-gold text-ink hover:bg-sand sm:w-auto"
                   onClick={() => void openGroup()}
-                >
-                  Join Tester Group
-                </button>
+                  label="Join Tester Group"
+                />
               </article>
 
-              {showStep2 ? (
-                <article className="rounded-3xl border border-ink/10 bg-foam px-6 py-6">
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal">Step 2 — Join the Google Play Test</p>
-                  <h3 className="display mt-2 text-3xl text-ink">Join the Google Play Test</h3>
-                  <p className="mt-3 text-ink/80">
-                    After joining the tester group, open the Google Play test link and choose Join the test.
+              <div className="rounded-3xl border border-ink/10 bg-foam px-6 py-5">
+                <p className="font-semibold text-ink">Already joined the group?</p>
+                <button
+                  type="button"
+                  className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-full border-2 border-teal px-6 font-semibold text-teal hover:bg-teal hover:text-white sm:w-auto"
+                  onClick={() => void checkAccess()}
+                  disabled={checking}
+                >
+                  {checking ? "Checking…" : "Check My Access"}
+                </button>
+                {checkMessage ? (
+                  <p className={`mt-3 text-sm ${ready ? "text-teal-dark" : "text-ink/80"}`} role="status">
+                    {checkMessage}
                   </p>
-                  {result.playJoinUrl ? (
-                    <button
-                      type="button"
-                      className="mt-5 inline-flex min-h-12 items-center rounded-full bg-clay px-5 font-semibold text-white hover:bg-clay-dark"
-                      onClick={() => void openPlay()}
-                    >
-                      Join on Google Play
-                    </button>
-                  ) : (
-                    <p className="mt-5 text-sm text-clay-dark">
-                      The Play test link is not configured yet. Please try again later.
-                    </p>
-                  )}
-                  <p className="mt-4 text-sm text-ink/70">{USER_MESSAGES.deviceAccount}</p>
-                </article>
+                ) : null}
+              </div>
+
+              {ready ? (
+                <p className="display text-3xl text-teal">{USER_MESSAGES.ready}</p>
               ) : null}
 
-              {showReady ? (
-                <article className="rounded-3xl bg-teal px-6 py-6 text-sand">
-                  <h3 className="display text-3xl text-foam">{USER_MESSAGES.readyToTest}</h3>
-                  <p className="mt-3 text-sand/90">{USER_MESSAGES.installHint}</p>
-                  {result.playJoinUrl ? (
-                    <button
-                      type="button"
-                      className="mt-5 inline-flex min-h-12 items-center rounded-full bg-foam px-5 font-semibold text-teal-dark hover:bg-sand"
-                      onClick={() => void openPlay()}
-                    >
-                      Open Google Play
-                    </button>
-                  ) : null}
-                </article>
-              ) : null}
+              <article className="rounded-3xl border border-ink/10 bg-foam px-6 py-6">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-teal">2 → Join Google Play Test</p>
+                <h3 className="display mt-2 text-3xl text-ink">Join Google Play Test</h3>
+                <p className="mt-3 text-ink/80">
+                  After joining the tester group, open the Google Play test and choose Join the test.
+                </p>
+                {result.playJoinUrl ? (
+                  <ExternalButton
+                    className="mt-5 min-h-14 w-full bg-clay text-white hover:bg-clay-dark sm:w-auto"
+                    onClick={() => void openPlayTest()}
+                    label="Join Google Play Test"
+                  />
+                ) : (
+                  <p className="mt-5 text-sm text-clay-dark">The Play test link is not configured yet.</p>
+                )}
+                <p className="mt-4 text-sm text-ink/70">{USER_MESSAGES.deviceAccount}</p>
+              </article>
 
-              <p className="text-sm text-ink/60">
-                {result.membershipVerified
-                  ? "Google Groups confirmed this email is already a member."
-                  : USER_MESSAGES.verificationUnavailable}
-                . Opening a link is recorded as a step, not as proof that Google added you.
-              </p>
+              <article className="rounded-3xl bg-teal px-6 py-6 text-sand">
+                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">3 → Install AAC-Sinhala</p>
+                <h3 className="display mt-2 text-3xl text-foam">Install AAC-Sinhala</h3>
+                <p className="mt-3 text-sand/90">{USER_MESSAGES.installHint}</p>
+                {result.playStoreUrl ? (
+                  <ExternalButton
+                    className="mt-5 min-h-14 w-full bg-foam text-teal-dark hover:bg-sand sm:w-auto"
+                    onClick={openInstall}
+                    label="Install AAC-Sinhala"
+                  />
+                ) : null}
+              </article>
             </>
           ) : null}
         </div>
       </div>
     </section>
+  );
+}
+
+function ExternalButton({
+  className,
+  onClick,
+  label,
+}: {
+  className: string;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-6 text-base font-semibold ${className}`}
+      onClick={onClick}
+      aria-label={`${label} (opens in a new tab)`}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" className="text-lg leading-none">
+        ↗
+      </span>
+    </button>
   );
 }

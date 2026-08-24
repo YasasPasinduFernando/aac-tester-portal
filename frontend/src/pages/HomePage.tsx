@@ -25,23 +25,23 @@ const features = [
 const steps = [
   {
     step: "1",
-    title: "Share your Google account",
-    body: "Enter the same Gmail address signed in on the Android device that will install the app.",
+    title: "Enter your Gmail",
+    body: "Use the same Google account signed in on the Android device that will install the app.",
   },
   {
     step: "2",
-    title: "Join the tester group",
-    body: "Open the official Google Groups page and join aac-sinhala-testers using that same account.",
+    title: "Join Tester Group",
+    body: "Open the official Google Groups page and join aac-sinhala-testers with that account.",
   },
   {
     step: "3",
-    title: "Join the Google Play test",
-    body: "Open the closed-testing opt-in page and choose Join the test. This website never downloads an APK.",
+    title: "Join Google Play Test",
+    body: "Open the closed-testing page and choose Join the test. This website never downloads an APK.",
   },
   {
     step: "4",
-    title: "Install AAC-Sinhala",
-    body: "After Play accepts you, install AAC-Sinhala from Google Play and send feedback if something is unclear.",
+    title: "Install App",
+    body: "After Play accepts you, install AAC-Sinhala from the Play Store listing.",
   },
 ];
 

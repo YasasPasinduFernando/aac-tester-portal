@@ -13,11 +13,16 @@ This is not the Android app. Testers enter a Gmail address, join the tester grou
 
 ```
 Gmail
-  → Get Test Access
-  → Join Tester Group (official Google Groups page)
-  → Join Google Play Test (closed-testing opt-in URL)
-  → Install AAC-Sinhala from Google Play
+  → Join Tester Group
+  → Join Google Play Test
+  → Install App
 ```
+
+Configured links:
+
+- Group: `GOOGLE_GROUP_EMAIL` / `GOOGLE_GROUP_JOIN_URL`
+- Closed test: `PLAY_TEST_JOIN_URL`
+- Store listing: `PLAY_STORE_URL`
 
 The website records:
 
@@ -77,7 +82,12 @@ If unset, the Worker derives that URL from `GOOGLE_GROUP_EMAIL`.
 npx wrangler secret put PLAY_TEST_JOIN_URL
 ```
 
-Paste the Closed testing **web opt-in** URL from Play Console. Do not invent a URL if Play has not created one yet. If this value is empty, Step 2 tells the tester the Play link is not configured.
+Paste the Closed testing **web opt-in** URL from Play Console, then set `PLAY_STORE_URL` to the public listing:
+
+```
+PLAY_TEST_JOIN_URL=https://play.google.com/apps/testing/lk.aac.sinhala_tamil_english
+PLAY_STORE_URL=https://play.google.com/store/apps/details?id=lk.aac.sinhala_tamil_english
+```
 
 ## 6. D1 setup
 

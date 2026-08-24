@@ -1,13 +1,13 @@
 import { authenticateAdmin } from "./admin";
 import { runMaintenance } from "./cleanup";
-import { inactivityDays, playJoinUrl, type Env } from "./env";
+import { inactivityDays, playJoinUrl, playStoreUrl, type Env } from "./env";
 import { submitFeedback } from "./feedback";
 import { createAppsScriptBridge } from "./groups";
 import { jsonResponse, withSecurityHeaders } from "./headers";
 import { d1RateLimitStore } from "./rate-limit";
 import { corsHeaders, hashIp, isAllowedOrigin, rejectCsrf, requestOrigin } from "./security";
 import { d1Store } from "./store";
-import { recordJoinEvent, requestAccess } from "./testers";
+import { recordJoinEvent, requestAccess, checkAccess } from "./testers";
 
 const MAX_JSON_BYTES = 32_768;
 
@@ -54,6 +54,13 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     if (url.pathname === "/api/testers/event" && request.method === "POST") {
       try {
         return withCors(await handleTesterEvent(request, env), cors);
+      } catch {
+        return jsonResponse({ ok: false, message: "Please try again in a moment." }, { status: 503, headers: cors });
+      }
+    }
+    if (url.pathname === "/api/testers/access" && request.method === "POST") {
+      try {
+        return withCors(await handleAccessCheck(request, env), cors);
       } catch {
         return jsonResponse({ ok: false, message: "Please try again in a moment." }, { status: 503, headers: cors });
       }
@@ -113,15 +120,20 @@ async function readJson(request: Request): Promise<Record<string, unknown>> {
   return payload as Record<string, unknown>;
 }
 
+function groupsBridge(env: Env) {
+  if (!env.APPS_SCRIPT_URL || !env.APPS_SCRIPT_SHARED_SECRET) return null;
+  return createAppsScriptBridge({
+    url: env.APPS_SCRIPT_URL,
+    sharedSecret: env.APPS_SCRIPT_SHARED_SECRET,
+    groupEmail: env.GOOGLE_GROUP_EMAIL,
+    enableAdminDirectory: false,
+  });
+}
+
 async function optionalMembershipVerified(env: Env, email: string): Promise<boolean> {
-  if (!env.APPS_SCRIPT_URL || !env.APPS_SCRIPT_SHARED_SECRET) return false;
+  const groups = groupsBridge(env);
+  if (!groups) return false;
   try {
-    const groups = createAppsScriptBridge({
-      url: env.APPS_SCRIPT_URL,
-      sharedSecret: env.APPS_SCRIPT_SHARED_SECRET,
-      groupEmail: env.GOOGLE_GROUP_EMAIL,
-      enableAdminDirectory: false,
-    });
     const result = await groups.check(email);
     return result.isMember === true;
   } catch {
@@ -142,6 +154,7 @@ async function handleTesterRequest(request: Request, env: Env): Promise<Response
     groupEmail: env.GOOGLE_GROUP_EMAIL,
     groupJoinUrl: env.GOOGLE_GROUP_JOIN_URL,
     playJoinUrl: playJoinUrl(env),
+    playStoreUrl: playStoreUrl(env),
     membershipVerified,
   });
 
@@ -170,6 +183,33 @@ async function handleTesterEvent(request: Request, env: Env): Promise<Response> 
     },
     { status: result.ok ? 200 : 400 },
   );
+}
+
+async function handleAccessCheck(request: Request, env: Env): Promise<Response> {
+  const body = await readJson(request);
+  const allowed = await d1RateLimitStore(env.DB).consume(
+    `access:${await hashIp(env, request)}`,
+    8,
+    15 * 60 * 1000,
+    Date.now(),
+  );
+  if (!allowed) {
+    return jsonResponse(
+      { ok: false, message: "Too many requests. Please wait a few minutes and try again." },
+      { status: 429 },
+    );
+  }
+  const result = await checkAccess({
+    email: body.email,
+    now: new Date(),
+    store: d1Store(env.DB),
+    groups: groupsBridge(env),
+    groupEmail: env.GOOGLE_GROUP_EMAIL,
+    groupJoinUrl: env.GOOGLE_GROUP_JOIN_URL,
+    playJoinUrl: playJoinUrl(env),
+    playStoreUrl: playStoreUrl(env),
+  });
+  return jsonResponse(result, { status: result.ok ? 200 : 400 });
 }
 
 async function handleFeedback(request: Request, env: Env): Promise<Response> {

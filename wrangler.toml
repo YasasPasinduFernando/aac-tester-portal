@@ -13,13 +13,14 @@ html_handling = "auto-trailing-slash"
 [vars]
 GOOGLE_GROUP_EMAIL = "aac-sinhala-testers@googlegroups.com"
 GOOGLE_GROUP_JOIN_URL = "https://groups.google.com/g/aac-sinhala-testers"
+PLAY_TEST_JOIN_URL = "https://play.google.com/apps/testing/lk.aac.sinhala_tamil_english"
+PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=lk.aac.sinhala_tamil_english"
 TESTER_INACTIVITY_DAYS = "90"
 ALLOWED_ORIGINS = "https://aac.yasaboy.com"
 ENVIRONMENT = "production"
 
-# PLAY_TEST_JOIN_URL, RATE_LIMIT_SALT, optional APPS_SCRIPT_* and
-# Cloudflare Access values are Worker secrets / dashboard vars.
-# Do not commit a real Play opt-in URL unless it is meant to be public.
+# PLAY_TEST_JOIN_URL and PLAY_STORE_URL are public Play links, set in [vars].
+# RATE_LIMIT_SALT and Cloudflare Access values stay Worker secrets.
 
 [[d1_databases]]
 binding = "DB"
