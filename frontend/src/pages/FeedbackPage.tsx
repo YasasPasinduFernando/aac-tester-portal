@@ -64,13 +64,13 @@ export default function FeedbackPage() {
       <main id="main" className="mx-auto max-w-3xl px-4 py-16">
         <h1 className="display text-4xl text-ink sm:text-5xl">Feedback</h1>
         <p className="mt-3 max-w-md text-base text-ink/80">
-          Tell us what to fix. Use the Play Store Gmail that installed the app when you can.
+          Tell us what to fix. Use the Google Play account that installed the app when you can.
         </p>
 
         <form className="glass mt-10 space-y-5 rounded-[2rem] p-6 sm:p-8" onSubmit={onSubmit} noValidate>
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold">
-              Play Store Gmail
+              Google Play account
             </label>
             <input
               id={emailId}

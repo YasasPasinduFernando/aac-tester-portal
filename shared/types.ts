@@ -59,26 +59,33 @@ export const USER_MESSAGES = {
   deviceAccount: "Use the same Play Store account on your Android device.",
   playStoreEveryone:
     "Everyone must use the Google account they use on Google Play.",
-  playStoreEmailLabel: "Play Store Gmail",
+  playStoreEmailLabel: "Google Play account",
   playStoreEmailHint:
     "Enter the same Gmail that is signed in on Google Play.",
   joinGroupHint: "Open the group and tap Join group. Use your Play Store account.",
-  joinGroupModalTitle: "Join the AAC Sinhala Tester Group",
+  joinGroupModalTitle: "Join AAC Sinhala Testers",
   joinGroupModalLead: "You're one step away from joining the AAC Sinhala beta.",
   playAccountImportant:
-    "Please use the same Google account you use on Google Play to join the tester group.",
+    "IMPORTANT: Use the same Google account you use on Google Play.",
   playAccountShort: "Please use the same Google account you use on Google Play.",
   usePlayStoreAccount: "Use your Play Store account to join the group.",
   usePlayStoreAccountHeading: "Use your Play Store account",
   sameAccountPlayAndGroup:
     "Join the tester group and Google Play test with the same Google account.",
-  accountEnteredLabel: "Account you entered",
+  accountEnteredLabel: "Google Play account",
+  beforeJoiningSignedIn:
+    "Before joining, make sure Google Groups is signed in with:",
+  switchIfAnotherAccount:
+    "If another Google account is currently active in your browser, switch to the account above before joining the group.",
   afterJoinCheck: "After joining, come back here and tap Check My Access.",
-  groupsNewTabHint: "Google Groups will open in a new tab.",
+  groupsNewTabHint: "Google Groups will open in a new tab. This page stays open.",
   lookForJoinGroup: "Look for the 'Join group' button",
   alreadyJoined: "Already joined?",
   inTheGroup: "Tester group joined",
-  nextPlayTest: "Next: Join the Google Play test",
+  nextPlayTest: "Next: Join Google Play Test",
+  wrongAccountHeading: "Using the wrong Google account?",
+  wrongAccountHelp:
+    "Go back to Google Groups, switch to the Google account shown above, and join the tester group again.",
   checkAccessNotDetected: "Your membership hasn't been detected yet.",
   checkAccessNotMember:
     "Your membership hasn't been detected yet. Make sure you joined the group with the same Google account you use on Google Play, then try again.",
@@ -111,6 +118,10 @@ export function bothJoinLinksOpened(
   playJoinStartedAt: string | null,
 ): boolean {
   return Boolean(groupJoinStartedAt && playJoinStartedAt);
+}
+
+export function alreadyJoinedPrompt(email: string): string {
+  return `Already joined with ${email}?`;
 }
 
 export function defaultGroupJoinUrl(groupEmail: string): string {

@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { isValidEmail, normalizeEmail } from "@shared/email";
-import { USER_MESSAGES } from "@shared/types";
+import { alreadyJoinedPrompt, USER_MESSAGES } from "@shared/types";
+import { AccountMismatchWarning, PlayAccountChip, WrongAccountHelp } from "./AccountWarning";
 import GroupJoinModal from "./GroupJoinModal";
 
 interface AccessResponse {
@@ -144,14 +145,14 @@ export default function JoinCard() {
   }
 
   async function recordEvent(eventName: "group_join" | "play_join") {
-    const normalized = normalizeEmail(email);
+    const account = requestEmail || normalizeEmail(email);
     await fetch("/api/testers/event", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "X-Requested-With": "AACSinhalaPortal",
       },
-      body: JSON.stringify({ email: normalized, event: eventName }),
+      body: JSON.stringify({ email: account, event: eventName }),
     });
   }
 
@@ -181,8 +182,8 @@ export default function JoinCard() {
   }
 
   async function checkAccess() {
-    const normalized = normalizeEmail(email);
-    if (!isValidEmail(normalized)) {
+    const account = requestEmail || normalizeEmail(email);
+    if (!isValidEmail(account)) {
       setError(USER_MESSAGES.invalidEmail);
       return;
     }
@@ -195,7 +196,7 @@ export default function JoinCard() {
           "Content-Type": "application/json",
           "X-Requested-With": "AACSinhalaPortal",
         },
-        body: JSON.stringify({ email: normalized }),
+        body: JSON.stringify({ email: account }),
       });
       const payload = (await response.json()) as {
         ok: boolean;
@@ -231,9 +232,10 @@ export default function JoinCard() {
   }
 
   const submitted = result?.outcome === "continue";
+  const accountEmail = requestEmail || normalizeEmail(email);
   const ready = membershipVerified;
   const notMember = membershipState === "not_member";
-  const showPlay = ready || (groupOpened && accessChecked && membershipState === "unavailable");
+  const showPlay = ready;
   const emailDirty = submitted && normalizeEmail(email) !== normalizeEmail(requestEmail);
 
   return (
@@ -245,7 +247,7 @@ export default function JoinCard() {
         {USER_MESSAGES.playStoreEveryone}
       </p>
 
-      <div className="glass mt-8 rounded-[1.75rem] p-5 sm:p-8">
+      <div className="glass mt-8 rounded-[1.75rem] p-5 sm:p-7">
         <form className="space-y-4" onSubmit={onSubmit} noValidate>
           <div>
             <label htmlFor={emailId} className="block text-sm font-semibold text-ink">
@@ -257,6 +259,9 @@ export default function JoinCard() {
               type="email"
               autoComplete="email"
               inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
               value={email}
               onChange={(event) => setEmail(event.target.value)}
@@ -277,7 +282,7 @@ export default function JoinCard() {
           {!submitted || emailDirty ? (
             <button
               type="submit"
-              className="inline-flex min-h-14 w-full items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70"
+              className="inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full bg-clay px-6 text-base font-semibold text-white hover:bg-clay-dark disabled:cursor-wait disabled:opacity-70"
               disabled={loading}
             >
               {loading ? "Saving…" : submitted ? "Update email" : "Continue"}
@@ -288,13 +293,18 @@ export default function JoinCard() {
         <div id={statusId} className={submitted ? "mt-6 space-y-4" : undefined} aria-live="polite">
           {submitted ? (
             <>
-              <div className="rounded-2xl bg-ink px-5 py-5 text-sand">
-                <p className="text-sm font-semibold text-gold">1. Join the group</p>
-                <p className="mt-2 text-sand/85">Open the group and tap Join group.</p>
+              <PlayAccountChip email={accountEmail} />
+
+              <div className="rounded-2xl border border-ink/10 bg-white px-4 py-5 sm:px-5">
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-clay">Step 1</p>
+                <h2 className="display mt-1 text-3xl text-ink">{USER_MESSAGES.joinGroupModalTitle}</h2>
+                <div className="mt-4">
+                  <AccountMismatchWarning email={accountEmail} />
+                </div>
                 <button
                   ref={joinGroupButtonRef}
                   type="button"
-                  className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-gold px-5 font-semibold text-ink hover:bg-sand"
+                  className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full bg-clay px-5 text-base font-semibold text-white hover:bg-clay-dark"
                   onClick={() => setShowGroupHelp(true)}
                   aria-haspopup="dialog"
                   aria-expanded={showGroupHelp}
@@ -302,31 +312,39 @@ export default function JoinCard() {
                   Open Tester Group
                   <span aria-hidden="true">↗</span>
                 </button>
+                <p className="mt-2 text-center text-sm text-ink/60">{USER_MESSAGES.groupsNewTabHint}</p>
+                <div className="mt-4 border-t border-ink/10 pt-4">
+                  <WrongAccountHelp />
+                </div>
               </div>
 
-              <div ref={checkAccessRef} id="check-access" className="rounded-2xl border border-ink/10 bg-foam px-5 py-5">
-                <p className="text-sm font-semibold text-ink">2. Check access</p>
+              <div ref={checkAccessRef} id="check-access" className="rounded-2xl border border-ink/10 bg-foam px-4 py-5 sm:px-5">
+                <p className="text-sm font-semibold text-ink">{alreadyJoinedPrompt(accountEmail)}</p>
                 {ready ? (
-                  <p className="mt-2 text-base font-semibold text-teal-dark" role="status">
-                    ✓ {USER_MESSAGES.inTheGroup}
-                  </p>
+                  <div className="mt-3" role="status">
+                    <p className="text-base font-semibold text-teal-dark">✓ {USER_MESSAGES.inTheGroup}</p>
+                    <p className="mt-1 break-all text-base font-semibold text-ink">{accountEmail}</p>
+                  </div>
                 ) : notMember ? (
-                  <p className="mt-2 text-sm text-ink/80" role="status">
-                    {USER_MESSAGES.checkAccessNotDetected} {USER_MESSAGES.checkAccessRetry}
-                  </p>
+                  <div className="mt-3 space-y-3" role="status">
+                    <p className="text-sm text-ink/80">
+                      {USER_MESSAGES.checkAccessNotDetected} {USER_MESSAGES.checkAccessRetry}
+                    </p>
+                    <WrongAccountHelp />
+                  </div>
                 ) : checkMessage ? (
-                  <p className="mt-2 text-sm text-ink/80" role="status">
+                  <p className="mt-3 text-sm text-ink/80" role="status">
                     {checkMessage}
                   </p>
                 ) : (
-                  <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.afterJoinCheck}</p>
+                  <p className="mt-3 text-sm text-ink/70">{USER_MESSAGES.afterJoinCheck}</p>
                 )}
                 {!ready ? (
                   <button
                     type="button"
-                    className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-full border-2 border-clay px-5 font-semibold text-clay hover:bg-clay hover:text-white"
+                    className="mt-4 inline-flex min-h-14 w-full touch-manipulation items-center justify-center rounded-full border-2 border-clay px-5 font-semibold text-clay hover:bg-clay hover:text-white disabled:opacity-60"
                     onClick={() => void checkAccess()}
-                    disabled={checking}
+                    disabled={checking || emailDirty}
                   >
                     {checking ? "Checking…" : "Check My Access"}
                   </button>
@@ -334,17 +352,17 @@ export default function JoinCard() {
               </div>
 
               {showPlay && result.playJoinUrl ? (
-                <div className="rounded-2xl border border-ink/10 bg-foam px-5 py-5">
-                  <p className="text-sm font-semibold text-ink">3. Join Play test, then install</p>
+                <div className="rounded-2xl border border-ink/10 bg-foam px-4 py-5 sm:px-5">
+                  <p className="text-sm font-semibold text-ink">{USER_MESSAGES.nextPlayTest}</p>
                   <p className="mt-2 text-sm text-ink/70">{USER_MESSAGES.deviceAccount}</p>
                   <ExternalButton
-                    className="mt-4 min-h-12 w-full bg-clay text-white hover:bg-clay-dark"
+                    className="mt-4 min-h-14 w-full bg-clay text-white hover:bg-clay-dark"
                     onClick={() => void openPlayTest()}
                     label="Join Google Play Test"
                   />
                   {result.playStoreUrl ? (
                     <ExternalButton
-                      className="mt-3 min-h-12 w-full border-2 border-ink/15 bg-white text-ink hover:bg-mist/60"
+                      className="mt-3 min-h-14 w-full border-2 border-ink/15 bg-white text-ink hover:bg-mist/60"
                       onClick={openInstall}
                       label="Install AAC-Sinhala"
                     />
@@ -358,7 +376,7 @@ export default function JoinCard() {
 
       <GroupJoinModal
         open={showGroupHelp}
-        email={email}
+        email={accountEmail}
         onClose={() => setShowGroupHelp(false)}
         onOpenGroup={confirmOpenGroup}
       />
@@ -378,7 +396,7 @@ function ExternalButton({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-6 text-base font-semibold ${className}`}
+      className={`inline-flex touch-manipulation items-center justify-center gap-2 rounded-full px-6 text-base font-semibold ${className}`}
       onClick={onClick}
       aria-label={`${label} (opens in a new tab)`}
     >
