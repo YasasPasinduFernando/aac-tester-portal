@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { GROUP_JOIN_WALKTHROUGH, USER_MESSAGES } from "./types";
+import { GROUP_JOIN_WALKTHROUGH, GUIDE_SHOTS, USER_MESSAGES } from "./types";
 
 describe("tester group join copy", () => {
   it("uses the exact Play Store account warning", () => {
@@ -27,5 +27,14 @@ describe("tester group join copy", () => {
       "Return to this page",
       'Tap "Check My Access"',
     ]);
+  });
+
+  it("points testers at the three onboarding screenshots", () => {
+    expect(GUIDE_SHOTS.joinGroup.src).toBe("/images/guides/join-group.png");
+    expect(GUIDE_SHOTS.becomeTester.src).toBe("/images/guides/become-tester.png");
+    expect(GUIDE_SHOTS.installApp.src).toBe("/images/guides/install-app.png");
+    expect(GUIDE_SHOTS.joinGroup.caption).toBe("Tap Join group");
+    expect(GUIDE_SHOTS.becomeTester.caption).toBe("Tap Become a tester");
+    expect(GUIDE_SHOTS.installApp.caption).toBe("Tap Install");
   });
 });

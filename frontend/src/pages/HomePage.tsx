@@ -2,6 +2,8 @@ import JoinCard from "../components/JoinCard";
 import Reveal from "../components/Reveal";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
+import GuideShot from "../components/GuideShot";
+import { GUIDE_SHOTS } from "@shared/types";
 
 const features = [
   {
@@ -201,6 +203,12 @@ function HowTestingWorks() {
           </Reveal>
         ))}
       </ol>
+      <p className="mt-10 text-sm font-semibold uppercase tracking-[0.2em] text-teal">What you will tap</p>
+      <div className="mt-4 grid gap-4 md:grid-cols-3">
+        {([GUIDE_SHOTS.joinGroup, GUIDE_SHOTS.becomeTester, GUIDE_SHOTS.installApp] as const).map((shot) => (
+          <GuideShot key={shot.src} src={shot.src} alt={shot.alt} caption={shot.caption} hint={shot.hint} />
+        ))}
+      </div>
     </section>
   );
 }

@@ -24,6 +24,27 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
   "Other",
 ];
 
+export const GUIDE_SHOTS = {
+  joinGroup: {
+    src: "/images/guides/join-group.png",
+    alt: "Google Groups page with a yellow arrow pointing to the Join group button",
+    caption: "Tap Join group",
+    hint: "Look for the Join group button near the top of the Google Groups page. The yellow arrow shows where it is.",
+  },
+  becomeTester: {
+    src: "/images/guides/become-tester.png",
+    alt: "Google Play testing page for AAC-Sinhala with a Become a tester button",
+    caption: "Tap Become a tester",
+    hint: "Use the same Google account you used to join the tester group.",
+  },
+  installApp: {
+    src: "/images/guides/install-app.png",
+    alt: "Google Play listing for AAC-Sinhala with an Install button",
+    caption: "Tap Install",
+    hint: "Install AAC-Sinhala from Google Play on your Android phone.",
+  },
+} as const;
+
 export const GROUP_JOIN_WALKTHROUGH = [
   "Open the tester group",
   "Make sure you're signed in with the email above",

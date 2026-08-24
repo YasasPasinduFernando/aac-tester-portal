@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef } from "react";
-import { GROUP_JOIN_WALKTHROUGH, USER_MESSAGES } from "@shared/types";
+import { GUIDE_SHOTS, GROUP_JOIN_WALKTHROUGH, USER_MESSAGES } from "@shared/types";
+import GuideShot from "./GuideShot";
 
 interface GroupJoinModalProps {
   open: boolean;
@@ -78,7 +79,7 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="group-join-modal glass relative flex max-h-[min(100dvh,44rem)] w-full max-w-lg flex-col overflow-hidden rounded-[1.75rem] text-ink shadow-2xl"
+        className="group-join-modal glass relative flex max-h-[min(100dvh,52rem)] w-full max-w-2xl flex-col overflow-hidden rounded-[1.75rem] text-ink shadow-2xl"
         onClick={(event) => event.stopPropagation()}
       >
         <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain px-5 py-5 sm:px-7 sm:py-6">
@@ -102,6 +103,15 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
           <p id={descId} className="mt-3 text-base text-ink/80 sm:text-lg">
             {USER_MESSAGES.joinGroupModalLead}
           </p>
+
+          <div className="mt-5">
+            <GuideShot
+              src={GUIDE_SHOTS.joinGroup.src}
+              alt={GUIDE_SHOTS.joinGroup.alt}
+              caption={GUIDE_SHOTS.joinGroup.caption}
+              hint={GUIDE_SHOTS.joinGroup.hint}
+            />
+          </div>
 
           <div
             className="mt-5 rounded-2xl border border-gold/40 bg-gold/15 px-4 py-4"
@@ -137,21 +147,6 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
               </li>
             ))}
           </ol>
-
-          <div className="mt-5 rounded-2xl border border-dashed border-ink/20 bg-mist/30 p-4">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.16em] text-ink/45">
-              Instruction card, not a screenshot
-            </p>
-            <div className="mt-3 rounded-xl bg-ink px-4 py-4 text-sand">
-              <p className="text-sm text-sand/70">AAC Sinhala Testers</p>
-              <div className="mt-4 flex justify-end">
-                <span className="inline-flex rounded-full bg-gold px-4 py-2 text-sm font-semibold text-ink">
-                  Join group
-                </span>
-              </div>
-            </div>
-            <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.lookForJoinGroup}</p>
-          </div>
 
           <p className="mt-4 text-sm text-ink/75">{USER_MESSAGES.afterJoinCheck}</p>
         </div>

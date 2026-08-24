@@ -1,7 +1,8 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { isValidEmail, normalizeEmail } from "@shared/email";
-import { USER_MESSAGES } from "@shared/types";
+import { GUIDE_SHOTS, USER_MESSAGES } from "@shared/types";
 import GroupJoinModal from "./GroupJoinModal";
+import GuideShot from "./GuideShot";
 
 interface AccessResponse {
   outcome: "continue" | "invalid_email" | "rate_limited" | "unavailable";
@@ -304,6 +305,15 @@ export default function JoinCard() {
                     {USER_MESSAGES.sameAccountPlayAndGroup}
                   </span>
                 </p>
+                <div className="mt-5">
+                  <GuideShot
+                    src={GUIDE_SHOTS.joinGroup.src}
+                    alt={GUIDE_SHOTS.joinGroup.alt}
+                    caption={GUIDE_SHOTS.joinGroup.caption}
+                    hint={GUIDE_SHOTS.joinGroup.hint}
+                    dark
+                  />
+                </div>
                 <button
                   ref={joinGroupButtonRef}
                   type="button"
@@ -363,6 +373,14 @@ export default function JoinCard() {
                       : "We could not confirm membership automatically. If you already tapped Join group, continue on Google Play with the same account."}
                   </p>
                   <p className="mt-3 text-sm font-semibold text-ink">{USER_MESSAGES.sameAccountPlayAndGroup}</p>
+                  <div className="mt-5">
+                    <GuideShot
+                      src={GUIDE_SHOTS.becomeTester.src}
+                      alt={GUIDE_SHOTS.becomeTester.alt}
+                      caption={GUIDE_SHOTS.becomeTester.caption}
+                      hint={GUIDE_SHOTS.becomeTester.hint}
+                    />
+                  </div>
                   <ExternalButton
                     className="mt-5 min-h-14 w-full bg-clay text-white hover:bg-clay-dark sm:w-auto"
                     onClick={() => void openPlayTest()}
@@ -377,6 +395,15 @@ export default function JoinCard() {
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-gold">STEP 3</p>
                   <h3 className="display mt-2 text-3xl text-foam">Install AAC-Sinhala</h3>
                   <p className="mt-3 text-sand/90">{USER_MESSAGES.installHint}</p>
+                  <div className="mt-5">
+                    <GuideShot
+                      src={GUIDE_SHOTS.installApp.src}
+                      alt={GUIDE_SHOTS.installApp.alt}
+                      caption={GUIDE_SHOTS.installApp.caption}
+                      hint={GUIDE_SHOTS.installApp.hint}
+                      dark
+                    />
+                  </div>
                   <ExternalButton
                     className="mt-5 min-h-14 w-full bg-foam text-teal-dark hover:bg-sand sm:w-auto"
                     onClick={openInstall}
