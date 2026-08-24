@@ -1,77 +1,65 @@
 import { describe, expect, it } from "vitest";
-import { decideCleanup, runCleanup } from "../src/cleanup";
+import { decideMaintenance, runMaintenance } from "../src/cleanup";
 import type { TesterRecord } from "../src/store";
 
 function tester(patch: Partial<TesterRecord>): TesterRecord {
   return {
     id: "1",
     email: "stale@example.com",
-    status: "eligible",
+    status: "requested",
     requested_at: "2026-01-01T00:00:00.000Z",
-    last_verified_at: "2026-01-02T00:00:00.000Z",
-    last_download_check_at: null,
-    last_website_activity_at: "2026-01-03T00:00:00.000Z",
-    installed_confirmed_at: null,
-    removed_at: null,
-    error_message: null,
+    group_join_started_at: null,
+    play_join_started_at: null,
+    feedback_submitted: 0,
+    last_activity_at: "2026-01-03T00:00:00.000Z",
+    created_at: "2026-01-01T00:00:00.000Z",
+    updated_at: "2026-01-03T00:00:00.000Z",
+    membership_verified: 0,
+    membership_verified_at: null,
+    notes: null,
     ...patch,
   };
 }
 
 const now = new Date("2026-08-24T00:00:00.000Z");
 
-describe("cleanup logic", () => {
-  it("does nothing when auto-removal is disabled", () => {
-    const decision = decideCleanup({
+describe("maintenance logic", () => {
+  it("marks stale requests as needs_attention without removing anyone from Google Groups", () => {
+    const decision = decideMaintenance({
       tester: tester({}),
       now,
       inactivityDays: 90,
-      enableAutoRemoval: false,
-      stillMember: true,
     });
-    expect(decision.action).toBe("none");
+    expect(decision.action).toBe("needs_attention");
+    expect(decision.nextStatus).toBe("needs_attention");
+    expect(decision.reason).toContain("Not removed from Google Groups");
   });
 
-  it("does not remove a tester merely because they have not visited the website", () => {
-    const decision = decideCleanup({
+  it("does not treat opened links as Play download proof", () => {
+    const decision = decideMaintenance({
       tester: tester({
-        last_website_activity_at: "2026-01-01T00:00:00.000Z",
-        last_verified_at: now.toISOString(),
-        installed_confirmed_at: null,
+        status: "play_pending",
+        group_join_started_at: now.toISOString(),
+        play_join_started_at: now.toISOString(),
+        last_activity_at: now.toISOString(),
       }),
       now,
       inactivityDays: 90,
-      enableAutoRemoval: true,
-      stillMember: true,
     });
     expect(decision.action).toBe("none");
+    expect(decision.reason).toContain("not proof");
   });
 
-  it("marks a tester removed only when Google confirms they left the group", () => {
-    const decision = decideCleanup({
-      tester: tester({ status: "eligible" }),
+  it("never calls a Google Group removal path", async () => {
+    const applied: string[] = [];
+    await runMaintenance({
+      testers: [tester({})],
       now,
       inactivityDays: 90,
-      enableAutoRemoval: false,
-      stillMember: false,
-    });
-    expect(decision.action).toBe("mark_removed");
-  });
-
-  it("never claims a Play download happened", async () => {
-    const removed: string[] = [];
-    await runCleanup({
-      testers: [tester({ last_download_check_at: null })],
-      now,
-      inactivityDays: 90,
-      enableAutoRemoval: false,
-      checkMember: async () => true,
-      removeMember: async (email) => {
-        removed.push(email);
-        return true;
+      applyStatus: async (email, status) => {
+        applied.push(`${email}:${status}`);
       },
-      markRemoved: async () => undefined,
     });
-    expect(removed).toHaveLength(0);
+    expect(applied).toEqual(["stale@example.com:needs_attention"]);
   });
 });

@@ -1,13 +1,13 @@
 # Copy to `.dev.vars` for local `wrangler dev`. Never commit `.dev.vars`.
-PLAY_TEST_JOIN_URL=https://play.google.com/apps/testing/lk.aac.sinhala_tamil_english
+PLAY_TEST_JOIN_URL=
 GOOGLE_GROUP_EMAIL=aac-sinhala-testers@googlegroups.com
-APPS_SCRIPT_URL=https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec
-APPS_SCRIPT_SHARED_SECRET=replace-with-a-long-random-secret
-ENABLE_AUTO_REMOVAL=false
+GOOGLE_GROUP_JOIN_URL=https://groups.google.com/g/aac-sinhala-testers
 TESTER_INACTIVITY_DAYS=90
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:8787
 ENVIRONMENT=development
-ENABLE_ADMIN_DIRECTORY=false
 RATE_LIMIT_SALT=replace-with-a-long-random-salt
 CF_ACCESS_TEAM_DOMAIN=
 CF_ACCESS_AUD=
+# Optional read-only membership check. Leave empty for self-service only.
+APPS_SCRIPT_URL=
+APPS_SCRIPT_SHARED_SECRET=

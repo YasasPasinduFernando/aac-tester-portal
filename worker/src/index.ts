@@ -1,13 +1,13 @@
 import { authenticateAdmin } from "./admin";
-import { runCleanup } from "./cleanup";
-import { autoRemovalEnabled, inactivityDays, type Env } from "./env";
+import { runMaintenance } from "./cleanup";
+import { inactivityDays, playJoinUrl, type Env } from "./env";
 import { submitFeedback } from "./feedback";
 import { createAppsScriptBridge } from "./groups";
 import { jsonResponse, withSecurityHeaders } from "./headers";
 import { d1RateLimitStore } from "./rate-limit";
 import { corsHeaders, hashIp, isAllowedOrigin, rejectCsrf, requestOrigin } from "./security";
 import { d1Store } from "./store";
-import { confirmInstall, requestAccess } from "./testers";
+import { recordJoinEvent, requestAccess } from "./testers";
 
 const MAX_JSON_BYTES = 32_768;
 
@@ -18,7 +18,7 @@ export default {
   },
 
   async scheduled(_event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-    await runScheduledCleanup(env);
+    await runScheduledMaintenance(env);
   },
 };
 
@@ -45,15 +45,15 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
         return jsonResponse(
           {
             outcome: "unavailable",
-            message: "Your request has been received. Please continue with Google Play.",
+            message: "Please try again in a moment.",
           },
-          { status: 200, headers: cors },
+          { status: 503, headers: cors },
         );
       }
     }
-    if (url.pathname === "/api/testers/confirm-install" && request.method === "POST") {
+    if (url.pathname === "/api/testers/event" && request.method === "POST") {
       try {
-        return withCors(await handleConfirmInstall(request, env), cors);
+        return withCors(await handleTesterEvent(request, env), cors);
       } catch {
         return jsonResponse({ ok: false, message: "Please try again in a moment." }, { status: 503, headers: cors });
       }
@@ -67,6 +67,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     }
     if (url.pathname === "/api/admin/stats" && request.method === "GET") {
       return withCors(await handleAdminStats(request, env), cors);
+    }
+    if (url.pathname === "/api/admin/export.csv" && request.method === "GET") {
+      return withCors(await handleAdminExport(request, env), cors);
     }
     return jsonResponse({ error: "not_found" }, { status: 404, headers: cors });
   }
@@ -110,51 +113,63 @@ async function readJson(request: Request): Promise<Record<string, unknown>> {
   return payload as Record<string, unknown>;
 }
 
-function groupsFromEnv(env: Env) {
-  return createAppsScriptBridge({
-    url: env.APPS_SCRIPT_URL,
-    sharedSecret: env.APPS_SCRIPT_SHARED_SECRET,
-    groupEmail: env.GOOGLE_GROUP_EMAIL,
-    enableAdminDirectory: (env.ENABLE_ADMIN_DIRECTORY || "false").toLowerCase() === "true",
-  });
+async function optionalMembershipVerified(env: Env, email: string): Promise<boolean> {
+  if (!env.APPS_SCRIPT_URL || !env.APPS_SCRIPT_SHARED_SECRET) return false;
+  try {
+    const groups = createAppsScriptBridge({
+      url: env.APPS_SCRIPT_URL,
+      sharedSecret: env.APPS_SCRIPT_SHARED_SECRET,
+      groupEmail: env.GOOGLE_GROUP_EMAIL,
+      enableAdminDirectory: false,
+    });
+    const result = await groups.check(email);
+    return result.isMember === true;
+  } catch {
+    return false;
+  }
 }
 
 async function handleTesterRequest(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
+  const email = typeof body.email === "string" ? body.email : "";
+  const membershipVerified = await optionalMembershipVerified(env, email);
   const result = await requestAccess({
     email: body.email,
     ipHash: await hashIp(env, request),
     now: new Date(),
     store: d1Store(env.DB),
     rateLimit: d1RateLimitStore(env.DB),
-    groups: groupsFromEnv(env),
-    playJoinUrl: env.PLAY_TEST_JOIN_URL,
+    groupEmail: env.GOOGLE_GROUP_EMAIL,
+    groupJoinUrl: env.GOOGLE_GROUP_JOIN_URL,
+    playJoinUrl: playJoinUrl(env),
+    membershipVerified,
   });
 
   const status =
     result.outcome === "invalid_email" ? 400 : result.outcome === "rate_limited" ? 429 : 200;
 
-  return jsonResponse(
-    {
-      outcome: result.outcome,
-      status: result.status,
-      message: result.message,
-      detail: result.detail,
-      membershipConfirmed: result.membershipConfirmed,
-      playJoinUrl: result.playJoinUrl,
-    },
-    { status },
-  );
+  return jsonResponse(result, { status });
 }
 
-async function handleConfirmInstall(request: Request, env: Env): Promise<Response> {
+async function handleTesterEvent(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request);
-  const result = await confirmInstall({
+  const result = await recordJoinEvent({
     email: body.email,
+    event: body.event,
     now: new Date(),
     store: d1Store(env.DB),
   });
-  return jsonResponse(result, { status: result.ok ? 200 : 400 });
+  return jsonResponse(
+    {
+      ok: result.ok,
+      message: result.message,
+      status: result.record?.status ?? null,
+      groupJoinStarted: Boolean(result.record?.group_join_started_at),
+      playJoinStarted: Boolean(result.record?.play_join_started_at),
+      membershipVerified: result.record?.membership_verified === 1,
+    },
+    { status: result.ok ? 200 : 400 },
+  );
 }
 
 async function handleFeedback(request: Request, env: Env): Promise<Response> {
@@ -192,18 +207,23 @@ async function handleFeedback(request: Request, env: Env): Promise<Response> {
   return jsonResponse(result, { status: result.ok ? 200 : 400 });
 }
 
-async function handleAdminStats(request: Request, env: Env): Promise<Response> {
-  const identity = await authenticateAdmin({
+async function requireAdmin(request: Request, env: Env) {
+  return authenticateAdmin({
     request,
     teamDomain: env.CF_ACCESS_TEAM_DOMAIN,
     audience: env.CF_ACCESS_AUD,
     environment: env.ENVIRONMENT,
   });
+}
+
+async function handleAdminStats(request: Request, env: Env): Promise<Response> {
+  const identity = await requireAdmin(request, env);
   if (!identity) {
     return jsonResponse({ error: "unauthorized" }, { status: 401 });
   }
-  const stats = await d1Store(env.DB).adminStats();
-  const testers = await d1Store(env.DB).listTesters();
+  const store = d1Store(env.DB);
+  const stats = await store.adminStats();
+  const testers = await store.listTesters();
   return jsonResponse({
     admin: identity.email,
     stats,
@@ -211,36 +231,61 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
   });
 }
 
-export async function runScheduledCleanup(env: Env): Promise<void> {
-  const store = d1Store(env.DB);
-  const groups = groupsFromEnv(env);
-  const testers = await store.listTesters();
-  const now = new Date();
+async function handleAdminExport(request: Request, env: Env): Promise<Response> {
+  const identity = await requireAdmin(request, env);
+  if (!identity) {
+    return jsonResponse({ error: "unauthorized" }, { status: 401 });
+  }
+  const testers = await d1Store(env.DB).listTesters();
+  const header = [
+    "email",
+    "status",
+    "requested_at",
+    "group_join_started_at",
+    "play_join_started_at",
+    "feedback_submitted",
+    "membership_verified",
+    "last_activity_at",
+  ];
+  const lines = [
+    header.join(","),
+    ...testers.map((row) =>
+      [
+        csv(row.email),
+        csv(row.status),
+        csv(row.requested_at),
+        csv(row.group_join_started_at ?? ""),
+        csv(row.play_join_started_at ?? ""),
+        row.feedback_submitted,
+        row.membership_verified,
+        csv(row.last_activity_at ?? ""),
+      ].join(","),
+    ),
+  ];
+  return new Response(lines.join("\n"), {
+    status: 200,
+    headers: {
+      "Content-Type": "text/csv; charset=utf-8",
+      "Content-Disposition": "attachment; filename=aac-tester-requests.csv",
+      "Cache-Control": "no-store",
+    },
+  });
+}
 
-  await runCleanup({
+function csv(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replaceAll("\"", "\"\"")}"`;
+  return value;
+}
+
+export async function runScheduledMaintenance(env: Env): Promise<void> {
+  const store = d1Store(env.DB);
+  const testers = await store.listTesters();
+  await runMaintenance({
     testers,
-    now,
+    now: new Date(),
     inactivityDays: inactivityDays(env),
-    enableAutoRemoval: autoRemovalEnabled(env),
-    async checkMember(email) {
-      const result = await groups.check(email);
-      if (result.code === "TEMPORARY_FAILURE" || result.code === "AUTH_FAILURE") {
-        return null;
-      }
-      await store.updateTester(email, { last_verified_at: now.toISOString() });
-      return result.isMember;
-    },
-    async removeMember(email) {
-      if (!autoRemovalEnabled(env)) return false;
-      const result = await groups.remove(email);
-      return result.ok && (result.code === "NOT_MEMBER" || Boolean(result.mutated));
-    },
-    async markRemoved(email, errorMessage) {
-      await store.updateTester(email, {
-        status: "removed",
-        removed_at: now.toISOString(),
-        error_message: errorMessage,
-      });
+    async applyStatus(email, status, updatedAt) {
+      await store.updateTester(email, { status, updated_at: updatedAt });
     },
   });
 }

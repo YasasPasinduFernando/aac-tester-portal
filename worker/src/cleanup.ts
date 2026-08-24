@@ -1,121 +1,82 @@
-import type { TesterRecord } from "./store";
+import { bothJoinLinksOpened } from "../../shared/types";
+import { refreshStatus, type TesterRecord } from "./store";
 
-export interface CleanupDecision {
+export interface MaintenanceDecision {
   email: string;
-  action: "none" | "mark_removed" | "review" | "attempt_remove";
+  action: "none" | "needs_attention" | "recalculate";
   reason: string;
+  nextStatus: TesterRecord["status"];
 }
 
 /**
- * Cleanup is conservative by design.
- * Google Play does not report individual download events, so this never treats
- * "did not visit the website" as proof that a tester should be removed.
+ * Maintenance never removes people from Google Groups or Play.
+ * Clicks are not treated as membership or download proof.
  */
-export function decideCleanup(input: {
+export function decideMaintenance(input: {
   tester: TesterRecord;
   now: Date;
   inactivityDays: number;
-  enableAutoRemoval: boolean;
-  stillMember: boolean | null;
-}): CleanupDecision {
+}): MaintenanceDecision {
   const { tester } = input;
+  const stale = isStale(tester, input.now, input.inactivityDays);
+  const next = refreshStatus(tester, stale && tester.membership_verified !== 1);
 
-  if (input.stillMember === false && tester.status !== "removed") {
+  if (stale && tester.status !== "needs_attention" && tester.membership_verified !== 1) {
     return {
       email: tester.email,
-      action: "mark_removed",
-      reason: "Google Groups reported that this address is no longer a member.",
+      action: "needs_attention",
+      reason: "No recorded onboarding activity within the inactivity window. Not removed from Google Groups.",
+      nextStatus: next.status,
     };
   }
 
-  if (!input.enableAutoRemoval) {
+  if (next.status !== tester.status) {
     return {
       email: tester.email,
-      action: "none",
-      reason: "Automatic removal is disabled.",
-    };
-  }
-
-  const hasInstallSignal = Boolean(tester.installed_confirmed_at);
-  const hasRecentVerification = isRecent(
-    tester.last_verified_at,
-    input.now,
-    input.inactivityDays,
-  );
-  const hasRecentWebsite = isRecent(
-    tester.last_website_activity_at,
-    input.now,
-    input.inactivityDays,
-  );
-
-  // Website absence alone is never enough. Require no install confirmation
-  // AND stale verification before even flagging a record.
-  if (hasInstallSignal || hasRecentVerification) {
-    return {
-      email: tester.email,
-      action: "none",
-      reason: "Observable participation or recent membership verification exists.",
-    };
-  }
-
-  if (tester.status === "requested" && !hasRecentWebsite) {
-    return {
-      email: tester.email,
-      action: "review",
-      reason: "Stale request with no confirmed membership. Left for admin review; not removed from Google Groups.",
-    };
-  }
-
-  if (input.stillMember && tester.status === "eligible") {
-    return {
-      email: tester.email,
-      action: "attempt_remove",
-      reason: "Auto-removal enabled, no install confirmation, and membership is stale. Mutation still depends on Workspace Admin SDK support.",
+      action: "recalculate",
+      reason: "Status refreshed from recorded events only.",
+      nextStatus: next.status,
     };
   }
 
   return {
     email: tester.email,
     action: "none",
-    reason: "No cleanup action.",
+    reason: bothJoinLinksOpened(tester.group_join_started_at, tester.play_join_started_at)
+      ? "Both join links were opened. That is not proof of group or Play membership."
+      : "No maintenance action.",
+    nextStatus: tester.status,
   };
 }
 
-function isRecent(value: string | null, now: Date, days: number): boolean {
-  if (!value) return false;
-  const then = Date.parse(value);
+function isStale(tester: TesterRecord, now: Date, days: number): boolean {
+  const anchor =
+    tester.last_activity_at ||
+    tester.play_join_started_at ||
+    tester.group_join_started_at ||
+    tester.requested_at;
+  const then = Date.parse(anchor);
   if (Number.isNaN(then)) return false;
-  return now.getTime() - then < days * 24 * 60 * 60 * 1000;
+  return now.getTime() - then >= days * 24 * 60 * 60 * 1000;
 }
 
-export async function runCleanup(input: {
+export async function runMaintenance(input: {
   testers: TesterRecord[];
   now: Date;
   inactivityDays: number;
-  enableAutoRemoval: boolean;
-  checkMember: (email: string) => Promise<boolean | null>;
-  removeMember: (email: string) => Promise<boolean>;
-  markRemoved: (email: string, errorMessage: string | null) => Promise<void>;
-}): Promise<CleanupDecision[]> {
-  const decisions: CleanupDecision[] = [];
+  applyStatus: (email: string, status: TesterRecord["status"], updatedAt: string) => Promise<void>;
+}): Promise<MaintenanceDecision[]> {
+  const decisions: MaintenanceDecision[] = [];
+  const iso = input.now.toISOString();
   for (const tester of input.testers) {
-    const stillMember = await input.checkMember(tester.email);
-    const decision = decideCleanup({
+    const decision = decideMaintenance({
       tester,
       now: input.now,
       inactivityDays: input.inactivityDays,
-      enableAutoRemoval: input.enableAutoRemoval,
-      stillMember,
     });
     decisions.push(decision);
-
-    if (decision.action === "mark_removed") {
-      await input.markRemoved(tester.email, null);
-    } else if (decision.action === "attempt_remove") {
-      const removed = await input.removeMember(tester.email);
-      if (removed) {
-        await input.markRemoved(tester.email, null);
-      }
+    if (decision.action !== "none") {
+      await input.applyStatus(tester.email, decision.nextStatus, iso);
     }
   }
   return decisions;

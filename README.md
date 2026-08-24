@@ -2,243 +2,101 @@
 
 Closed-testing onboarding website for **AAC Sinhala**.
 
-- App: AAC Sinhala
+- Website: `https://aac.yasaboy.com/`
 - Package: `lk.aac.sinhala_tamil_english`
+- Play track: `alpha`
 - Google Group: `aac-sinhala-testers@googlegroups.com`
-- Intended domain: `https://aac.yasaboy.com/`
 
-This project is **not** the Android app. It is only the tester access portal: a visitor enters the Google account used on their Android device, the server records the request, membership is checked with Google, and — when Google confirms the person is a tester — the site shows the Play closed-testing join link.
+This is not the Android app. Testers enter a Gmail address, join the tester group themselves, then open the Google Play closed-test opt-in page and install AAC-Sinhala from Play.
 
-It never downloads an APK or AAB. Installation happens only on Google Play.
-
-## 1. Purpose
-
-Give families, teachers, and practitioners a calm, accessible way to:
-
-1. Request closed-test access
-2. Learn what AAC Sinhala is
-3. Open the Google Play testing link once they are eligible
-4. Send private feedback
-
-The Google Play Console feedback URL should point to `https://aac.yasaboy.com/feedback`.
-
-## 2. Architecture
+## 1. Tester flow
 
 ```
-Browser (React + Vite + Tailwind)
-        |
-        |  POST /api/testers/request  (email only)
-        v
-Cloudflare Worker + D1
-        |
-        |  server-side POST (shared secret in JSON body)
-        v
-Google Apps Script web app
-        |
-        |  GroupsApp.getGroupByEmail / hasUser / getRole
-        |  optional AdminDirectory.Members.insert (Workspace only)
-        v
-Google Group  aac-sinhala-testers@googlegroups.com
+Gmail
+  → Get Test Access
+  → Join Tester Group (official Google Groups page)
+  → Join Google Play Test (closed-testing opt-in URL)
+  → Install AAC-Sinhala from Google Play
 ```
 
-Secrets stay in Worker secrets and Apps Script script properties. Nothing in the frontend bundle can add testers, read the tester list, or call Google.
+The website records:
 
-### Honest Google Groups limitation
+- request submitted
+- group join link opened
+- Play link opened
+- feedback submitted
 
-Official Apps Script **GroupsApp is query-only**:
+It does **not** mark someone as added to the group or Play merely because they clicked a button.
 
-- [GroupsApp](https://developers.google.com/apps-script/reference/groups/groups-app)
-- [Group](https://developers.google.com/apps-script/reference/groups/group)
+If membership cannot be verified, the UI says **Membership verification unavailable**.
 
-Supported methods used here:
-
-- `GroupsApp.getGroupByEmail("aac-sinhala-testers@googlegroups.com")`
-- `group.hasUser(email)`
-- `group.getRole(email)`
-
-There is **no** GroupsApp method to add, invite, or remove members.
-
-Member mutation exists only on **Admin SDK Directory**, which Google documents for **Google Workspace domain administrators**:
-
-- [Admin SDK Directory in Apps Script](https://developers.google.com/apps-script/advanced/admin-sdk-directory)
-- [members.insert](https://developers.google.com/workspace/admin/directory/reference/rest/v1/members/insert)
-
-`aac-sinhala-testers@googlegroups.com` is a consumer Google Group. Admin Directory typically returns `Domain not found` / `Resource Not Found` for `@googlegroups.com` groups. This project **does not fake success** in that case. It stores the request as `requested` and asks an admin to add the person in the Google Groups UI.
-
-This project also does **not**:
-
-- Automate the Google Groups website
-- Use cookies, passwords, or CAPTCHA bypasses
-- Put Google credentials in the browser
-- Claim that Play reported an app download
-
-### Google Play API
-
-[edits.testers](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.testers) can attach **Google Groups** to a test track. It cannot manage individual email lists, and it cannot report that a person downloaded the app. This portal therefore does not call Play to add a single Gmail address or to prove installation.
-
-## 3. Local development
-
-Requirements: Node.js 20+.
-
-```bash
-cd aac-tester-portal
-cp .dev.vars.example .dev.vars
-npm install
-npm run test
-npm run typecheck
-npm run lint
-npm run build
-```
-
-Frontend:
-
-```bash
-npm run dev
-```
-
-Worker (in a second terminal). Create a local D1 database first:
-
-```bash
-npx wrangler d1 create aac-tester-portal
-# put the returned database_id into wrangler.toml
-npx wrangler d1 migrations apply aac-tester-portal --local
-npm run dev:worker
-```
-
-The Vite dev server proxies `/api` to `http://127.0.0.1:8787`.
-
-Local admin identity is **development only**. With `ENVIRONMENT=development` in `.dev.vars`, the Worker accepts `X-Admin-Dev-Email`. Production ignores that header. There is no admin password.
-
-## 4. Google Apps Script setup
-
-1. Open [script.google.com](https://script.google.com/) as the Google account that **owns or manages** `aac-sinhala-testers@googlegroups.com`.
-2. Create a project named `AAC Sinhala tester bridge`.
-3. Copy `apps-script/Code.gs` and `apps-script/appsscript.json`.
-4. Project Settings → Script properties → add `SHARED_SECRET` with a long random value (32+ characters).
-5. Deploy → New deployment → type **Web app**:
-   - Execute as: **Me**
-   - Who has access: **Anyone**
-6. Authorize the `groups` scope when Google prompts.
-7. Copy the web app URL. Store it as the Worker secret `APPS_SCRIPT_URL`.
-8. Store the same shared secret as Worker secret `APPS_SCRIPT_SHARED_SECRET`.
-
-Apps Script web apps do not reliably receive custom HTTP headers after Google’s redirect, so the Worker sends the secret **in the JSON body**. The frontend never sees it.
-
-Optional Workspace-only mutation:
-
-1. Services → enable **AdminDirectory**
-2. Add OAuth scope `https://www.googleapis.com/auth/admin.directory.group.member`
-3. Set Worker var `ENABLE_ADMIN_DIRECTORY=true`
-
-If Admin Directory is unavailable, the script returns `MUTATION_UNAVAILABLE`. That is expected for consumer groups.
-
-## 5. Google authorization
-
-The script owner authorizes **once**. Testers never sign in to Google through this website. Testers only type an email address.
-
-Do not collect:
-
-- Google passwords
-- Play Console passwords
-- OAuth refresh tokens
-- Service-account JSON
-- Private keys
-
-## 6. Google Group configuration
+## 2. Google Group setup
 
 In [Google Groups](https://groups.google.com/) for `aac-sinhala-testers@googlegroups.com`:
 
 | Setting | Recommended |
 | --- | --- |
-| Who can see the group | Group members / invited people, not the public internet |
-| Who can view members | Managers / owners only |
-| Who can join | **Invited users only** (or “Anyone can ask”, then approve) |
-| Who can post | Typically members only, or owners only if the group is just an allow-list |
-| Allow external members | **On** (Play testers will be Gmail users) |
-| Member list visibility | Hidden from non-managers |
+| Who can join | Anyone on the web, or “Anyone can ask” if you want approval |
+| Allow external members | On |
+| Who can view members | Owners / managers only |
+| Who can see the group | Not public if you do not need it public |
+| Member list | Hidden from non-managers |
 
-Add this group to the Play closed testing track as the tester Google Group.
+Attach this group to the Play **closed testing / alpha** track as the tester Google Group.
 
-Pending emails appear on `/admin` so an owner can paste them into **Members → Add members** until a Workspace Directory API exists for this group.
+The self-service button opens:
 
-## 7. Cloudflare D1 setup
+`GOOGLE_GROUP_JOIN_URL` (default `https://groups.google.com/g/aac-sinhala-testers`)
+
+## 3. Closed Testing setup
+
+1. Play Console → AAC Sinhala → **Closed testing** (track `alpha`)
+2. Testers → Google Groups → `aac-sinhala-testers@googlegroups.com`
+3. Copy the web opt-in URL (often `https://play.google.com/apps/testing/lk.aac.sinhala_tamil_english`)
+4. Store it as Worker secret/var `PLAY_TEST_JOIN_URL`
+5. Point Play feedback to `https://aac.yasaboy.com/feedback`
+
+This site never hosts or downloads an APK/AAB.
+
+## 4. How to configure `GOOGLE_GROUP_JOIN_URL`
+
+```bash
+npx wrangler secret put GOOGLE_GROUP_JOIN_URL
+# or set [vars] in wrangler.toml
+```
+
+Use the official Groups page for `aac-sinhala-testers`. Example:
+
+`https://groups.google.com/g/aac-sinhala-testers`
+
+If unset, the Worker derives that URL from `GOOGLE_GROUP_EMAIL`.
+
+## 5. How to configure `PLAY_TEST_JOIN_URL`
+
+```bash
+npx wrangler secret put PLAY_TEST_JOIN_URL
+```
+
+Paste the Closed testing **web opt-in** URL from Play Console. Do not invent a URL if Play has not created one yet. If this value is empty, Step 2 tells the tester the Play link is not configured.
+
+## 6. D1 setup
 
 ```bash
 npx wrangler login
 npx wrangler d1 create aac-tester-portal
-```
-
-Put the `database_id` in `wrangler.toml`. Apply migrations:
-
-```bash
+# put database_id into wrangler.toml
 npx wrangler d1 migrations apply aac-tester-portal --remote
 ```
 
-Tables:
-
-- `tester_requests` — email, status, timestamps, server-side error code
-- `feedback` — private feedback
-- `rate_limits` — hashed client windows
-
-Never store passwords or OAuth tokens in D1.
-
-Optional screenshots:
+Local:
 
 ```bash
-npx wrangler r2 bucket create aac-tester-feedback
+npx wrangler d1 migrations apply aac-tester-portal --local
 ```
 
-Then add an `[[r2_buckets]]` binding named `FEEDBACK_BUCKET` in `wrangler.toml`. Without R2, text feedback is still saved; screenshots are skipped.
+`tester_requests` stores onboarding events only. No passwords or OAuth tokens.
 
-## 8. Cloudflare Worker setup
-
-```bash
-npx wrangler secret put PLAY_TEST_JOIN_URL
-npx wrangler secret put APPS_SCRIPT_URL
-npx wrangler secret put APPS_SCRIPT_SHARED_SECRET
-npx wrangler secret put RATE_LIMIT_SALT
-```
-
-Example Play URL:
-
-`https://play.google.com/apps/testing/lk.aac.sinhala_tamil_english`
-
-Set vars in `wrangler.toml` or the dashboard:
-
-```
-GOOGLE_GROUP_EMAIL=aac-sinhala-testers@googlegroups.com
-ENABLE_AUTO_REMOVAL=false
-TESTER_INACTIVITY_DAYS=90
-ALLOWED_ORIGINS=https://aac.yasaboy.com
-ENVIRONMENT=production
-```
-
-The daily cron (`0 3 * * *`) re-checks membership. Auto-removal stays **off** until you set `ENABLE_AUTO_REMOVAL=true`.
-
-## 9. Environment variables
-
-See `.env.example` and `.dev.vars.example`. Placeholders only.
-
-| Name | Where | Purpose |
-| --- | --- | --- |
-| `PLAY_TEST_JOIN_URL` | Worker secret | Closed-test join link |
-| `GOOGLE_GROUP_EMAIL` | Worker var | Tester group |
-| `APPS_SCRIPT_URL` | Worker secret | Apps Script web app |
-| `APPS_SCRIPT_SHARED_SECRET` | Worker secret | Bridge authentication |
-| `ENABLE_AUTO_REMOVAL` | Worker var | Default `false` |
-| `TESTER_INACTIVITY_DAYS` | Worker var | Default `90` |
-| `ALLOWED_ORIGINS` | Worker var | CSRF / CORS allow-list |
-| `RATE_LIMIT_SALT` | Worker secret | Hash `CF-Connecting-IP` |
-| `CF_ACCESS_TEAM_DOMAIN` | Worker var | Admin JWT issuer |
-| `CF_ACCESS_AUD` | Worker var | Admin JWT audience |
-| `ENABLE_ADMIN_DIRECTORY` | Worker var | Workspace mutation attempts |
-| `ENVIRONMENT` | Worker var | `production` or `development` |
-
-Do not commit `.env`, `.dev.vars`, credentials, or service-account JSON.
-
-## 10. Cloudflare deployment
-
-Do not deploy until install, tests, typecheck, lint, and production build succeed.
+## 7. Cloudflare deployment
 
 ```bash
 npm install
@@ -247,123 +105,97 @@ npm run lint
 npm test
 npm run build
 npx wrangler d1 migrations apply aac-tester-portal --remote
+npx wrangler secret put PLAY_TEST_JOIN_URL
+npx wrangler secret put RATE_LIMIT_SALT
 npx wrangler deploy
 ```
 
-`npm run deploy` runs `build` then `wrangler deploy`.
+Then Workers & Pages → Custom Domains → `aac.yasaboy.com`.
 
-This Worker serves the Vite `frontend/dist` assets and the `/api/*` routes from one hostname.
+Protect `/admin*` and `/api/admin*` with Cloudflare Access. Set `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`.
 
-## 11. Custom domain setup
+## 8. Admin dashboard
 
-Do not change unrelated DNS records.
+`/admin` (Access-protected) shows:
 
-In Cloudflare Dashboard → Workers & Pages → `aac-tester-portal` → **Custom Domains** → add `aac.yasaboy.com`.
+- total tester requests
+- pending group joins
+- pending Play joins
+- completed onboarding flows (both links opened — **not** verified membership)
+- feedback count
+- recent requests
+- CSV export
 
-If the zone `yasaboy.com` is on Cloudflare, the dashboard can create the hostname record. If the zone is elsewhere, add only the record Cloudflare shows (usually a CNAME to the workers.dev hostname).
+Verified Google Group memberships are shown separately and stay 0 unless a supported read API confirms `hasUser`.
 
-Then:
+## 9. Feedback system
 
-1. SSL/TLS: Full (strict) once the certificate is issued
-2. Cloudflare Zero Trust → Access → Application:
-   - Application domain: `aac.yasaboy.com/admin*` and `aac.yasaboy.com/api/admin*`
-   - Policy: emails of project admins
-3. Copy the Access team domain and application AUD into Worker vars `CF_ACCESS_TEAM_DOMAIN` and `CF_ACCESS_AUD`
+Public form: `https://aac.yasaboy.com/feedback`
 
-The Worker verifies `Cf-Access-Jwt-Assertion`. There is no hardcoded admin password.
+Fields: email, type (Bug / Suggestion / Usability / Accessibility / Other), message, optional screenshot.
 
-## 12. Security
+Stored in D1. Not shown publicly. Screenshots need an optional R2 bucket.
 
-- Rate limits on tester requests
-- Origin checks on mutating requests
-- Email normalize + validate
-- Duplicate emails upsert into one row
-- No secrets in the frontend
-- Security headers including CSP
-- Hashed IPs in the rate-limit table
-- Friendly tester messages; Google error codes stay in D1 `error_message` for admins
-- Tester list is never public
-- One tester cannot see another tester’s email
-- Feedback is private
+## 10. Google API limitations
 
-## 13. Tester flow
+[GroupsApp](https://developers.google.com/apps-script/reference/groups/groups-app) is query-only (`getGroupByEmail`, `hasUser`, `getRole`).
 
-1. Open `https://aac.yasaboy.com/`
-2. Enter the Google account used on the Android device
-3. Worker validates, rate-limits, and stores `requested`
-4. Apps Script checks `hasUser`
-5. If already a member (or Admin Directory actually adds/invites them): show **You're ready!** and **Open Google Play**
-6. If mutation is unavailable: show **Your request has been received. Please continue with Google Play.** An admin adds them in Google Groups, then they retry
-7. After install, optional **I installed the app** is self-reported. It is not a Play download receipt
-8. `/feedback` stores private comments
+[edits.testers](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.testers) attaches Google Groups to a track. It does not add one Gmail address and does not report downloads.
 
-Statuses: `requested`, `invited`, `member`, `eligible`, `removed`, `error`.
+## 11. Why automatic consumer Google Group membership is not implemented
 
-`eligible` means Google Groups confirmed membership. It does **not** mean Play confirmed a download.
+`aac-sinhala-testers@googlegroups.com` is a consumer group. Adding members requires [Admin SDK Directory](https://developers.google.com/apps-script/advanced/admin-sdk-directory), which Google documents for **Workspace domain admins**. Consumer `@googlegroups.com` groups are not Directory resources.
 
-## 14. Troubleshooting
+This project does not:
 
-| Symptom | What to check |
-| --- | --- |
-| `invalid_email` | Typo, extra text, non-email string |
-| Always pending | Consumer group cannot be mutated; add the email in Google Groups, then retry |
-| `AUTH_FAILURE` in admin errors | Apps Script secret mismatch or script not authorized |
-| `MUTATION_UNAVAILABLE` | Expected for `@googlegroups.com` without Workspace Admin SDK |
-| 429 | Rate limit; wait 15 minutes |
-| Admin 401 | Cloudflare Access not wrapping `/admin` and `/api/admin` |
-| Play page says you are not a tester | Person is not in the group yet, or Play track uses a different group |
-| Screenshot missing | R2 bucket not bound |
+- automate the Groups website
+- collect Google passwords
+- reuse cookies/sessions
+- bypass CAPTCHAs
+- call undocumented APIs
 
-## 15. How to disable automatic removal
+Self-service join is the supported path.
 
-Keep or set:
+## 12. Switching to Google Workspace / Admin SDK later
 
-```
-ENABLE_AUTO_REMOVAL=false
+If the tester group moves to a Workspace domain:
+
+1. Enable Admin Directory in Apps Script
+2. Authorize `https://www.googleapis.com/auth/admin.directory.group.member`
+3. Store `APPS_SCRIPT_URL` and `APPS_SCRIPT_SHARED_SECRET` as Worker secrets
+4. Keep using `GroupsApp.hasUser` for verification
+5. Only then may the portal set `membership_verified` / status `completed`
+
+Until Google confirms membership, never tell a tester they were added.
+
+## Local development
+
+```bash
+cp .dev.vars.example .dev.vars
+npm install
+npm run test
+npm run dev
 ```
 
-That is the default. The cron may still refresh `last_verified_at` by calling `hasUser`. It will not attempt to remove anyone while the flag is false.
+Worker (second terminal):
 
-If you later enable it, also set `TESTER_INACTIVITY_DAYS`. Removal still requires a working mutation API. Website visits alone are never treated as a reason to remove a tester.
+```bash
+npx wrangler d1 migrations apply aac-tester-portal --local
+npm run dev:worker
+```
 
-## 16. Limitations of Google Play download tracking
+## Automatic maintenance
 
-Google Play does not expose a reliable per-email “this person downloaded the app” signal to this portal.
+Daily cron recalculates status and may mark stale rows `needs_attention`.
 
-[edits.testers](https://developers.google.com/android-publisher/api-ref/rest/v3/edits.testers) manages Google Groups on a track, not individual downloads.
-
-Therefore the portal tracks **observable events only**:
-
-- request submitted
-- group membership verified
-- last website activity
-- optional self-reported install confirmation
-- feedback submitted
-
-Do not tell stakeholders that an email “downloaded the app” unless you have evidence from a verified official API. As of this project, that evidence is not available here.
-
-## Manual end-to-end checklist
-
-- [ ] Homepage renders, skip-link works, keyboard can reach Join
-- [ ] Invalid email shows an accessible error
-- [ ] Valid new email is stored as `requested` when Groups mutation is unavailable
-- [ ] Email already in the group returns **You're ready!** and the Play URL
-- [ ] Duplicate submit does not create a second row
-- [ ] Fifth rapid submit is rate limited
-- [ ] `/feedback` stores a message; it does not appear on the public site
-- [ ] `/admin` is blocked without Access (production)
-- [ ] Cron with `ENABLE_AUTO_REMOVAL=false` does not remove members
-- [ ] No `.env`, JSON keys, or tokens were committed
+It does **not** remove people from the Google Group. Play download status is not available.
 
 ## Project layout
 
 ```
-aac-tester-portal/
-  frontend/          React + Vite + Tailwind
-  worker/            Cloudflare Worker + tests
-  apps-script/       GroupsApp bridge
-  migrations/        D1 schema
-  public/            extra static copies
-  shared/            email helpers used by frontend and worker
-  README.md
+frontend/      React + Vite + Tailwind
+worker/        Cloudflare Worker
+apps-script/   optional read-only GroupsApp bridge
+migrations/    D1 schema
+shared/        email + status helpers
 ```

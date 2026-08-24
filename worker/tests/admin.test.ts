@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { authenticateAdmin } from "../src/admin";
+import { emptyTester } from "../src/store";
 import { MemoryStore } from "./helpers";
 
 describe("admin authentication", () => {
@@ -37,20 +38,10 @@ describe("admin authentication", () => {
 
   it("keeps tester emails in the admin payload only", async () => {
     const store = new MemoryStore();
-    await store.upsertTester({
-      id: "1",
-      email: "hidden-tester@example.com",
-      status: "requested",
-      requested_at: "2026-08-24T10:00:00.000Z",
-      last_verified_at: null,
-      last_download_check_at: null,
-      last_website_activity_at: null,
-      installed_confirmed_at: null,
-      removed_at: null,
-      error_message: null,
-    });
+    await store.upsertTester(emptyTester("hidden-tester@example.com", new Date("2026-08-24T10:00:00.000Z")));
     const stats = await store.adminStats();
     expect(stats.totalRequests).toBe(1);
-    expect(stats.pendingRequests).toBe(1);
+    expect(stats.pendingGroupJoins).toBe(1);
+    expect(stats.feedbackCount).toBe(0);
   });
 });

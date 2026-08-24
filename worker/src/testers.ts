@@ -1,16 +1,27 @@
 import { parseEmailInput } from "../../shared/email";
-import { USER_MESSAGES, type AccessOutcome, type TesterStatus } from "../../shared/types";
-import { mapGroupToStatus, type GroupBridge } from "./groups";
-import { newId, type Store, type TesterRecord } from "./store";
+import {
+  bothJoinLinksOpened,
+  resolveGroupJoinUrl,
+  USER_MESSAGES,
+  type AccessOutcome,
+  type TesterStatus,
+} from "../../shared/types";
 import type { RateLimitStore } from "./rate-limit";
+import { emptyTester, refreshStatus, type Store, type TesterRecord } from "./store";
 
 export interface AccessResult {
   outcome: AccessOutcome;
   status: TesterStatus | null;
-  playJoinUrl: string | null;
   message: string;
   detail: string;
-  membershipConfirmed: boolean;
+  membershipVerified: boolean;
+  membershipVerification: "verified" | "unavailable";
+  groupJoinUrl: string | null;
+  playJoinUrl: string | null;
+  groupJoinStarted: boolean;
+  playJoinStarted: boolean;
+  bothLinksOpened: boolean;
+  duplicate: boolean;
 }
 
 const REQUEST_LIMIT = 5;
@@ -22,8 +33,10 @@ export async function requestAccess(input: {
   now: Date;
   store: Store;
   rateLimit: RateLimitStore;
-  groups: GroupBridge;
-  playJoinUrl: string;
+  groupEmail: string;
+  groupJoinUrl?: string;
+  playJoinUrl: string | null;
+  membershipVerified?: boolean;
 }): Promise<AccessResult> {
   const allowed = await input.rateLimit.consume(
     `tester:${input.ipHash}`,
@@ -32,129 +45,100 @@ export async function requestAccess(input: {
     input.now.getTime(),
   );
   if (!allowed) {
-    return {
-      outcome: "rate_limited",
-      status: null,
-      playJoinUrl: null,
-      message: USER_MESSAGES.rateLimited,
-      detail: USER_MESSAGES.rateLimited,
-      membershipConfirmed: false,
-    };
+    return emptyResult("rate_limited", USER_MESSAGES.rateLimited);
   }
 
   const email = parseEmailInput(input.email);
   if (!email) {
-    return {
-      outcome: "invalid_email",
-      status: null,
-      playJoinUrl: null,
-      message: USER_MESSAGES.invalidEmail,
-      detail: USER_MESSAGES.invalidEmail,
-      membershipConfirmed: false,
-    };
+    return emptyResult("invalid_email", USER_MESSAGES.invalidEmail);
   }
 
   const existing = await input.store.getTester(email);
-  const requestedAt = existing?.requested_at ?? input.now.toISOString();
-  const record: TesterRecord = {
-    id: existing?.id ?? newId(),
-    email,
-    status: existing?.status ?? "requested",
-    requested_at: requestedAt,
-    last_verified_at: existing?.last_verified_at ?? null,
-    last_download_check_at: existing?.last_download_check_at ?? null,
-    last_website_activity_at: input.now.toISOString(),
-    installed_confirmed_at: existing?.installed_confirmed_at ?? null,
-    removed_at: existing?.removed_at ?? null,
-    error_message: existing?.error_message ?? null,
-  };
+  const iso = input.now.toISOString();
+  const verified = existing?.membership_verified === 1 || input.membershipVerified === true;
 
-  const check = await input.groups.check(email);
-  let mapped = mapGroupToStatus(check);
-  let membershipConfirmed = mapped.confirmed && (mapped.status === "eligible" || mapped.status === "member" || mapped.status === "invited");
+  const record: TesterRecord = refreshStatus({
+    ...(existing ?? emptyTester(email, input.now)),
+    last_activity_at: iso,
+    updated_at: iso,
+    membership_verified: verified ? 1 : (existing?.membership_verified ?? 0),
+    membership_verified_at: verified
+      ? (existing?.membership_verified_at ?? iso)
+      : existing?.membership_verified_at ?? null,
+    notes: verified ? null : "Membership verification unavailable",
+  });
 
-  if (!membershipConfirmed) {
-    const invite = await input.groups.invite(email);
-    mapped = mapGroupToStatus(invite);
-    membershipConfirmed =
-      mapped.confirmed &&
-      (mapped.status === "eligible" || mapped.status === "member" || mapped.status === "invited");
-
-    if (!membershipConfirmed && (invite.code === "AUTH_FAILURE" || invite.code === "TEMPORARY_FAILURE" || invite.code === "GROUP_FAILURE")) {
-      record.status = existing?.status === "requested" ? "error" : (existing?.status ?? "error");
-      record.error_message = invite.code;
-      record.last_verified_at = input.now.toISOString();
-      await input.store.upsertTester(record);
-      return {
-        outcome: "unavailable",
-        status: record.status,
-        playJoinUrl: input.playJoinUrl || null,
-        message: USER_MESSAGES.unavailable,
-        detail: USER_MESSAGES.pendingBody,
-        membershipConfirmed: false,
-      };
-    }
-  }
-
-  record.status = membershipConfirmed
-    ? mapped.status === "invited"
-      ? "invited"
-      : "eligible"
-    : "requested";
-  record.last_verified_at = input.now.toISOString();
-  record.error_message = membershipConfirmed ? null : mapped.status === "error" ? check.code : null;
   await input.store.upsertTester(record);
 
-  if (membershipConfirmed) {
-    return {
-      outcome: "ready",
-      status: record.status,
-      playJoinUrl: input.playJoinUrl || null,
-      message: USER_MESSAGES.ready,
-      detail: USER_MESSAGES.readyBody,
-      membershipConfirmed: true,
-    };
-  }
-
   return {
-    outcome: "pending",
-    status: "requested",
-    playJoinUrl: input.playJoinUrl || null,
-    message: USER_MESSAGES.pending,
-    detail: USER_MESSAGES.pendingBody,
-    membershipConfirmed: false,
+    outcome: "continue",
+    status: record.status,
+    message: USER_MESSAGES.almostReady,
+    detail: USER_MESSAGES.sameAccount,
+    membershipVerified: verified,
+    membershipVerification: verified ? "verified" : "unavailable",
+    groupJoinUrl: resolveGroupJoinUrl(input.groupJoinUrl, input.groupEmail),
+    playJoinUrl: input.playJoinUrl,
+    groupJoinStarted: Boolean(record.group_join_started_at),
+    playJoinStarted: Boolean(record.play_join_started_at),
+    bothLinksOpened: bothJoinLinksOpened(
+      record.group_join_started_at,
+      record.play_join_started_at,
+    ),
+    duplicate: Boolean(existing),
   };
 }
 
-export async function confirmInstall(input: {
+export async function recordJoinEvent(input: {
   email: unknown;
+  event: unknown;
   now: Date;
   store: Store;
-}): Promise<{ ok: boolean; message: string }> {
+}): Promise<{ ok: boolean; message: string; record: TesterRecord | null }> {
   const email = parseEmailInput(input.email);
   if (!email) {
-    return { ok: false, message: USER_MESSAGES.invalidEmail };
+    return { ok: false, message: USER_MESSAGES.invalidEmail, record: null };
   }
+  const event = String(input.event ?? "");
+  if (event !== "group_join" && event !== "play_join") {
+    return { ok: false, message: "Unknown event.", record: null };
+  }
+
   const existing = await input.store.getTester(email);
   if (!existing) {
-    await input.store.upsertTester({
-      id: newId(),
-      email,
-      status: "requested",
-      requested_at: input.now.toISOString(),
-      last_verified_at: null,
-      last_download_check_at: input.now.toISOString(),
-      last_website_activity_at: input.now.toISOString(),
-      installed_confirmed_at: input.now.toISOString(),
-      removed_at: null,
-      error_message: null,
-    });
-  } else {
-    await input.store.updateTester(email, {
-      installed_confirmed_at: input.now.toISOString(),
-      last_download_check_at: input.now.toISOString(),
-      last_website_activity_at: input.now.toISOString(),
-    });
+    return { ok: false, message: USER_MESSAGES.invalidEmail, record: null };
   }
-  return { ok: true, message: USER_MESSAGES.confirmInstall };
+
+  const iso = input.now.toISOString();
+  const patch: Partial<TesterRecord> = {
+    last_activity_at: iso,
+    updated_at: iso,
+  };
+  if (event === "group_join" && !existing.group_join_started_at) {
+    patch.group_join_started_at = iso;
+  }
+  if (event === "play_join" && !existing.play_join_started_at) {
+    patch.play_join_started_at = iso;
+  }
+
+  await input.store.updateTester(email, patch);
+  const record = await input.store.getTester(email);
+  return { ok: true, message: "Recorded.", record };
+}
+
+function emptyResult(outcome: AccessOutcome, message: string): AccessResult {
+  return {
+    outcome,
+    status: null,
+    message,
+    detail: message,
+    membershipVerified: false,
+    membershipVerification: "unavailable",
+    groupJoinUrl: null,
+    playJoinUrl: null,
+    groupJoinStarted: false,
+    playJoinStarted: false,
+    bothLinksOpened: false,
+    duplicate: false,
+  };
 }

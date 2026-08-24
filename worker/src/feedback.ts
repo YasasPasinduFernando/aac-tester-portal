@@ -86,7 +86,9 @@ export async function submitFeedback(input: {
   const tester = await input.store.getTester(email);
   if (tester) {
     await input.store.updateTester(email, {
-      last_website_activity_at: input.now.toISOString(),
+      feedback_submitted: 1,
+      last_activity_at: input.now.toISOString(),
+      updated_at: input.now.toISOString(),
     });
   }
 

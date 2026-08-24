@@ -1,17 +1,11 @@
 export type TesterStatus =
   | "requested"
-  | "invited"
-  | "member"
-  | "eligible"
-  | "removed"
-  | "error";
+  | "group_pending"
+  | "play_pending"
+  | "completed"
+  | "needs_attention";
 
-export type AccessOutcome =
-  | "ready"
-  | "pending"
-  | "invalid_email"
-  | "rate_limited"
-  | "unavailable";
+export type AccessOutcome = "continue" | "invalid_email" | "rate_limited" | "unavailable";
 
 export type FeedbackType =
   | "Bug"
@@ -29,22 +23,47 @@ export const FEEDBACK_TYPES: readonly FeedbackType[] = [
 ];
 
 export const USER_MESSAGES = {
-  invalidEmail:
-    "Please enter a valid Google account email address.",
-  rateLimited:
-    "Too many requests. Please wait a few minutes and try again.",
-  ready:
-    "You're ready!",
-  readyBody:
-    "Open Google Play and use the same Google account on your Android device.",
-  pending:
-    "Your request has been received. Please continue with Google Play.",
-  pendingBody:
-    "If you are not in the tester group yet, you may need to wait for an invitation before the Play page lets you join.",
-  unavailable:
-    "Your request has been received. Please continue with Google Play.",
-  confirmInstall:
-    "Thank you. We recorded that you installed the app on this Google account. This is self-reported and is not a Play Store download receipt.",
-  feedbackThanks:
-    "Thank you. Your feedback was saved privately.",
+  invalidEmail: "Please enter a valid Google account email address.",
+  rateLimited: "Too many requests. Please wait a few minutes and try again.",
+  almostReady: "You're almost ready!",
+  sameAccount: "Please use the same Google account that you registered with.",
+  deviceAccount: "Use the same Google account on your Android device.",
+  verificationUnavailable: "Membership verification unavailable",
+  readyToTest: "You're ready to test AAC Sinhala",
+  installHint: "Open Google Play and install AAC-Sinhala.",
+  feedbackThanks: "Thank you. Your feedback was saved privately.",
 } as const;
+
+export function deriveStatus(input: {
+  groupJoinStartedAt: string | null;
+  playJoinStartedAt: string | null;
+  membershipVerified: boolean;
+  needsAttention?: boolean;
+}): TesterStatus {
+  if (input.membershipVerified) return "completed";
+  if (input.needsAttention) return "needs_attention";
+  if (input.playJoinStartedAt) return "play_pending";
+  if (input.groupJoinStartedAt) return "group_pending";
+  return "requested";
+}
+
+export function bothJoinLinksOpened(
+  groupJoinStartedAt: string | null,
+  playJoinStartedAt: string | null,
+): boolean {
+  return Boolean(groupJoinStartedAt && playJoinStartedAt);
+}
+
+export function defaultGroupJoinUrl(groupEmail: string): string {
+  const local = groupEmail.split("@")[0]?.trim();
+  if (!local) return "https://groups.google.com/";
+  return `https://groups.google.com/g/${encodeURIComponent(local)}`;
+}
+
+export function resolveGroupJoinUrl(
+  configured: string | undefined,
+  groupEmail: string,
+): string {
+  const value = configured?.trim();
+  return value ? value : defaultGroupJoinUrl(groupEmail);
+}

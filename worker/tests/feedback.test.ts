@@ -5,6 +5,21 @@ import { MemoryStore } from "./helpers";
 describe("feedback submission", () => {
   it("stores private feedback without exposing it", async () => {
     const store = new MemoryStore();
+    await store.upsertTester({
+      id: "1",
+      email: "caregiver@example.com",
+      status: "requested",
+      requested_at: "2026-08-24T10:00:00.000Z",
+      group_join_started_at: null,
+      play_join_started_at: null,
+      feedback_submitted: 0,
+      last_activity_at: "2026-08-24T10:00:00.000Z",
+      created_at: "2026-08-24T10:00:00.000Z",
+      updated_at: "2026-08-24T10:00:00.000Z",
+      membership_verified: 0,
+      membership_verified_at: null,
+      notes: null,
+    });
     const result = await submitFeedback({
       data: {
         email: "caregiver@example.com",
@@ -18,6 +33,7 @@ describe("feedback submission", () => {
     expect(store.feedback).toHaveLength(1);
     expect(store.feedback[0]?.email).toBe("caregiver@example.com");
     expect(result.message).toContain("saved privately");
+    expect(store.testers.get("caregiver@example.com")?.feedback_submitted).toBe(1);
   });
 
   it("rejects short messages and invalid types", async () => {

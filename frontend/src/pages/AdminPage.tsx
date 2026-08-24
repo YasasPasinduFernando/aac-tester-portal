@@ -7,23 +7,22 @@ interface AdminPayload {
   admin?: string;
   stats?: {
     totalRequests: number;
-    currentTesterCount: number;
-    pendingRequests: number;
-    activeTesters: number;
-    removedTesters: number;
-    recentErrors: Array<{
-      id: string;
-      email: string;
-      error_message: string | null;
-      requested_at: string;
-    }>;
+    pendingGroupJoins: number;
+    pendingPlayJoins: number;
+    completedOnboardingFlows: number;
+    verifiedMemberships: number;
+    needsAttention: number;
+    feedbackCount: number;
   };
   testers?: Array<{
     email: string;
     status: string;
     requested_at: string;
-    last_verified_at: string | null;
-    error_message: string | null;
+    group_join_started_at: string | null;
+    play_join_started_at: string | null;
+    feedback_submitted: number;
+    membership_verified: number;
+    last_activity_at: string | null;
   }>;
 }
 
@@ -58,47 +57,69 @@ export default function AdminPage() {
     };
   }, []);
 
+  async function exportCsv() {
+    const headers: HeadersInit = { "X-Requested-With": "AACSinhalaPortal" };
+    if (import.meta.env.DEV) {
+      const localEmail = window.localStorage.getItem("aac-admin-dev-email");
+      if (localEmail) headers["X-Admin-Dev-Email"] = localEmail;
+    }
+    const response = await fetch("/api/admin/export.csv", { headers });
+    if (!response.ok) return;
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "aac-tester-requests.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div className="min-h-screen">
       <SiteHeader />
       <main id="main" className="mx-auto max-w-6xl px-4 py-16">
-        <h1 className="display text-5xl text-ink">Tester admin</h1>
-        <p className="mt-3 max-w-2xl text-ink/75">
-          This page is not public. In production it must sit behind Cloudflare Access. Tester emails are shown only
-          here so pending people can be added to the Google Group by hand when the Groups API cannot mutate
-          membership.
-        </p>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="display text-5xl text-ink">Tester admin</h1>
+            <p className="mt-3 max-w-2xl text-ink/75">
+              Protected by Cloudflare Access. Emails stay on this page. Link clicks are recorded events, not Google
+              membership or Play download proof.
+            </p>
+          </div>
+          {data?.stats ? (
+            <button
+              type="button"
+              className="rounded-full bg-ink px-5 py-3 font-semibold text-sand hover:bg-ink-soft"
+              onClick={() => void exportCsv()}
+            >
+              Export CSV
+            </button>
+          ) : null}
+        </div>
         {error ? (
           <p className="glass mt-8 rounded-3xl p-6 text-clay-dark" role="alert">
             {error}
           </p>
         ) : null}
         {data?.stats ? (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-            <Stat label="Total requests" value={data.stats.totalRequests} />
-            <Stat label="Current testers" value={data.stats.currentTesterCount} />
-            <Stat label="Pending" value={data.stats.pendingRequests} />
-            <Stat label="Active testers" value={data.stats.activeTesters} />
-            <Stat label="Removed" value={data.stats.removedTesters} />
+          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <Stat label="Total tester requests" value={data.stats.totalRequests} />
+            <Stat label="Pending group joins" value={data.stats.pendingGroupJoins} />
+            <Stat label="Pending Play joins" value={data.stats.pendingPlayJoins} />
+            <Stat label="Completed onboarding flows" value={data.stats.completedOnboardingFlows} />
+            <Stat label="Feedback count" value={data.stats.feedbackCount} />
+            <Stat label="Needs attention" value={data.stats.needsAttention} />
           </div>
         ) : null}
-        {data?.stats?.recentErrors?.length ? (
-          <section className="mt-12">
-            <h2 className="text-2xl font-semibold">Recent errors</h2>
-            <ul className="mt-4 space-y-2">
-              {data.stats.recentErrors.map((row) => (
-                <li key={row.id} className="rounded-2xl bg-foam px-4 py-3 text-sm">
-                  <span className="font-medium">{row.email}</span>
-                  <span className="mx-2 text-ink/50">{row.error_message}</span>
-                  <time dateTime={row.requested_at}>{row.requested_at}</time>
-                </li>
-              ))}
-            </ul>
-          </section>
+        {data?.stats ? (
+          <p className="mt-4 text-sm text-ink/60">
+            Verified Google Group memberships: {data.stats.verifiedMemberships}. If this is 0, membership
+            verification is unavailable for the consumer group.
+          </p>
         ) : null}
         {data?.testers ? (
           <section className="mt-12 overflow-x-auto">
-            <h2 className="text-2xl font-semibold">Requests</h2>
+            <h2 className="text-2xl font-semibold">Recent requests</h2>
             <table className="mt-4 min-w-full text-left text-sm">
               <caption className="sr-only">Tester requests</caption>
               <thead>
@@ -106,7 +127,9 @@ export default function AdminPage() {
                   <th className="py-3 pr-4">Email</th>
                   <th className="py-3 pr-4">Status</th>
                   <th className="py-3 pr-4">Requested</th>
-                  <th className="py-3 pr-4">Last verified</th>
+                  <th className="py-3 pr-4">Group link</th>
+                  <th className="py-3 pr-4">Play link</th>
+                  <th className="py-3 pr-4">Feedback</th>
                 </tr>
               </thead>
               <tbody>
@@ -115,7 +138,9 @@ export default function AdminPage() {
                     <td className="py-3 pr-4">{row.email}</td>
                     <td className="py-3 pr-4">{row.status}</td>
                     <td className="py-3 pr-4">{row.requested_at}</td>
-                    <td className="py-3 pr-4">{row.last_verified_at ?? "—"}</td>
+                    <td className="py-3 pr-4">{row.group_join_started_at ? "Opened" : "—"}</td>
+                    <td className="py-3 pr-4">{row.play_join_started_at ? "Opened" : "—"}</td>
+                    <td className="py-3 pr-4">{row.feedback_submitted ? "Yes" : "No"}</td>
                   </tr>
                 ))}
               </tbody>
