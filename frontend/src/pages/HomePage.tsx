@@ -3,6 +3,7 @@ import Reveal from "../components/Reveal";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
 import GuideShot from "../components/GuideShot";
+import AppScreenCards, { AppPhoneCluster } from "../components/AppScreenCards";
 import { GUIDE_SHOTS } from "@shared/types";
 
 const features = [
@@ -52,6 +53,7 @@ export default function HomePage() {
           <WhatIsAac />
           <WhySinhala />
           <Features />
+          <AppScreenCards />
           <HowTestingWorks />
           <JoinCard />
           <FeedbackTeaser />
@@ -78,7 +80,8 @@ function Hero() {
         <div className="absolute inset-0 bg-gradient-to-b from-ink/40 via-ink/55 to-ink" />
         <div className="bg-grid absolute inset-0 opacity-60" />
       </div>
-      <div className="relative mx-auto flex min-h-[92vh] max-w-6xl flex-col justify-end px-4 pb-20 pt-36">
+      <div className="relative mx-auto grid min-h-[92vh] max-w-6xl items-end gap-10 px-4 pb-16 pt-32 lg:grid-cols-[1.1fr_0.9fr] lg:items-center lg:pb-20 lg:pt-28">
+        <div>
         <p className="sinhala text-sm font-medium tracking-[0.18em] text-gold uppercase">
           සංවෘත පරීක්ෂණය
         </p>
@@ -99,11 +102,18 @@ function Hero() {
             Join the Beta Test
           </a>
           <a
-            href="#about-aac"
+            href="#app"
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-sand/30 bg-white/10 px-6 font-semibold text-sand no-underline hover:bg-white/16"
           >
-            Learn More
+            See the app
           </a>
+        </div>
+        <div className="mt-10 lg:hidden">
+          <AppPhoneCluster compact />
+        </div>
+        </div>
+        <div className="hidden lg:block">
+          <AppPhoneCluster />
         </div>
       </div>
     </section>
@@ -126,11 +136,7 @@ function WhatIsAac() {
             It is a communication aid in testing, not a clinical diagnosis or treatment.
           </p>
         </div>
-        <BlurPanel
-          image="/images/section-communication.jpg"
-          webp="/images/section-communication.webp"
-          caption="Picture cards, speech bubbles, and Sinhala letterforms."
-        />
+        <AppPhoneCluster compact />
       </section>
     </Reveal>
   );
@@ -248,28 +254,5 @@ function About() {
         </p>
       </section>
     </Reveal>
-  );
-}
-
-function BlurPanel({
-  image,
-  webp,
-  caption,
-}: {
-  image: string;
-  webp: string;
-  caption: string;
-}) {
-  return (
-    <figure className="relative min-h-72 overflow-hidden rounded-[2rem]">
-      <picture>
-        <source srcSet={webp} type="image/webp" />
-        <img src={image} alt="" className="blur-photo absolute inset-0 h-full w-full object-cover" />
-      </picture>
-      <div className="absolute inset-0 bg-gradient-to-tr from-ink/50 via-transparent to-teal/20" />
-      <figcaption className="absolute bottom-4 left-4 right-4 rounded-2xl bg-ink/70 px-4 py-3 text-sm text-sand">
-        {caption}
-      </figcaption>
-    </figure>
   );
 }
