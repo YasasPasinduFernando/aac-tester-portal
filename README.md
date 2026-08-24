@@ -13,7 +13,8 @@ This is not the Android app. Testers enter a Gmail address, join the tester grou
 
 ```
 Gmail
-  → Join Tester Group
+  → Open Tester Group (tap Join group)
+  → Check My Access
   → Join Google Play Test
   → Install App
 ```
@@ -34,6 +35,10 @@ The website records:
 It does **not** mark someone as added to the group or Play merely because they clicked a button.
 
 If membership cannot be verified, the UI says **Membership verification unavailable**.
+
+Google does not document a current Groups URL that auto-joins a member. Official help is: open the group page and tap **Join group**. This portal therefore uses `https://groups.google.com/g/aac-sinhala-testers` and shows a short instruction card first.
+
+To make Join group easier to find on Google's page (manual group settings, not changed by this site): keep **Who can join group** = Anyone on the web can join, and **Who can see group** visible enough that signed-in Gmail users can open the group.
 
 ## 2. Google Group setup
 

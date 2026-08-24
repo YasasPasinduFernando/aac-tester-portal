@@ -30,18 +30,13 @@ const steps = [
   },
   {
     step: "2",
-    title: "Join Tester Group",
-    body: "Open the official Google Groups page and join aac-sinhala-testers with that account.",
+    title: "Join AAC Sinhala Testers",
+    body: "Open the group and tap Join group. Stay signed in with the same Gmail you entered here.",
   },
   {
     step: "3",
-    title: "Join Google Play Test",
-    body: "Open the closed-testing page and choose Join the test. This website never downloads an APK.",
-  },
-  {
-    step: "4",
-    title: "Install App",
-    body: "After Play accepts you, install AAC-Sinhala from the Play Store listing.",
+    title: "Check your access",
+    body: "Come back to this page and tap Check My Access. Then join the Google Play test and install the app.",
   },
 ];
 

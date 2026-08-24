@@ -26,4 +26,11 @@ describe("group and status helpers", () => {
       }),
     ).toBe("play_pending");
   });
+
+  it("keeps the official group page URL rather than a fake auto-join link", () => {
+    expect(defaultGroupJoinUrl("aac-sinhala-testers@googlegroups.com")).not.toMatch(/\/join$/);
+    expect(defaultGroupJoinUrl("aac-sinhala-testers@googlegroups.com")).toBe(
+      "https://groups.google.com/g/aac-sinhala-testers",
+    );
+  });
 });
