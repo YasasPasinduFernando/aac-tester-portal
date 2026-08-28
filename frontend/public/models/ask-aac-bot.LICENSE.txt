@@ -1,0 +1,11 @@
+Ask Yasas companion robot (ask-yasas-bot.glb)
+
+Original low-poly digital-assistant character authored for Yasaboy.com.
+Geometry, materials, and animation clips are original works created for this
+portfolio project.
+
+Licence: CC0 1.0 Universal (public domain dedication)
+https://creativecommons.org/publicdomain/zero/1.0/
+
+No third-party mesh, texture, or stock character was copied.
+Reference images were used only as visual design direction.

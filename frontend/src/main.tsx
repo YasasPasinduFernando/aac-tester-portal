@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
 import App from "./App";
+import AssistantHost from "./assistant/AssistantHost";
 import { AuthProvider } from "./auth";
 import { LocaleProvider } from "./locale";
 import "./index.css";
@@ -17,6 +18,7 @@ createRoot(root).render(
         <LocaleProvider>
           <AuthProvider>
             <App />
+            <AssistantHost />
           </AuthProvider>
         </LocaleProvider>
     </BrowserRouter>

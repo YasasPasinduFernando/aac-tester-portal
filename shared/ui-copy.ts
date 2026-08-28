@@ -67,7 +67,14 @@ const extraEn = {
   contact: "Contact",
   contactName: "Yasas Pasindu Fernando",
   contactLocation: "Hikkaduwa, Sri Lanka",
-  fieldExposure: "Field exposure",
+    fieldExposure: "Field exposure",
+  chatTitle: "Ask AAC",
+  chatLead: "A helper for joining, Play Store, feedback, and the Smart AAC case study.",
+  chatWelcome:
+    "Hi — I can help you join the tester group, install from Play, send feedback, or open the case study. Google Sign-In is not the same as being in the group.",
+  chatPlaceholder: "Ask about joining, Play Store, or the app…",
+  chatSend: "Send",
+  chatClose: "Close chat",
 } as const;
 
 export const UI_COPY = {
@@ -165,6 +172,13 @@ export const UI_COPY = {
     contactName: "Yasas Pasindu Fernando",
     contactLocation: "හික්කඩුව, ශ්‍රී ලංකාව",
     fieldExposure: "ක්ෂේත්‍ර නිරාවරණය",
+    chatTitle: "AAC අසන්න",
+    chatLead: "එක්වීම, Play Store, ප්‍රතිපෝෂණය සහ Smart AAC අධ්‍යයනය සඳහා උපකාරකයකි.",
+    chatWelcome:
+      "ආයුබෝවන් — පරීක්ෂක කණ්ඩායම, Play ස්ථාපනය, ප්‍රතිපෝෂණය හෝ අධ්‍යයනය ගැන උදව් කළ හැකිය. Google පිවිසුම කණ්ඩායමේ සාමාජිකත්වය නොවේ.",
+    chatPlaceholder: "එක්වීම, Play Store, යෙදුම ගැන අසන්න…",
+    chatSend: "යවන්න",
+    chatClose: "චැට් වසන්න",
   },
   ta: {
     ...USER_MESSAGES,
@@ -257,6 +271,13 @@ export const UI_COPY = {
     contactName: "Yasas Pasindu Fernando",
     contactLocation: "ஹிக்கடுவை, இலங்கை",
     fieldExposure: "கள வெளிப்பாடு",
+    chatTitle: "AAC கேளுங்கள்",
+    chatLead: "சேர்தல், Play Store, பின்னூட்டம் மற்றும் Smart AAC ஆய்வுக்கான உதவியாளர்.",
+    chatWelcome:
+      "வணக்கம் — சோதனையாளர் குழு, Play நிறுவல், பின்னூட்டம் அல்லது ஆய்வில் உதவ முடியும். Google உள்நுழைவு குழு உறுப்பினர் ஆகாது.",
+    chatPlaceholder: "சேர்தல், Play Store, செயலி பற்றி கேளுங்கள்…",
+    chatSend: "அனுப்பு",
+    chatClose: "அரட்டையை மூடு",
   },
 } as const;
 
