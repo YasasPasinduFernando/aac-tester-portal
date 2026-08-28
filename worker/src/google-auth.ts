@@ -15,11 +15,25 @@ export interface GoogleIdentity {
   avatarUrl: string | null;
 }
 
+export type AuthMethod = "google" | "email";
+
+export const EMAIL_SUBJECT_PREFIX = "email:";
+
 export interface PortalSession {
   email: string;
   subjectId: string;
   displayName: string | null;
   avatarUrl: string | null;
+  authMethod?: AuthMethod;
+}
+
+export function emailSessionSubject(email: string): string {
+  return `${EMAIL_SUBJECT_PREFIX}${email}`;
+}
+
+export function resolveAuthMethod(method: unknown, subjectId: string): AuthMethod {
+  if (method === "email" || subjectId.startsWith(EMAIL_SUBJECT_PREFIX)) return "email";
+  return "google";
 }
 
 export type GoogleVerifyError = "invalid" | "missing_email" | "unverified_email";
@@ -92,10 +106,12 @@ export async function createSessionToken(
   now = new Date(),
 ): Promise<string> {
   const key = sessionSecretKey(secret);
+  const authMethod = resolveAuthMethod(session.authMethod, session.subjectId);
   return new SignJWT({
     email: session.email,
     name: session.displayName,
     picture: session.avatarUrl,
+    am: authMethod,
   })
     .setProtectedHeader({ alg: "HS256", typ: "JWT" })
     .setSubject(session.subjectId)
@@ -123,6 +139,7 @@ export async function readSessionToken(
       subjectId,
       displayName: typeof payload.name === "string" ? payload.name : null,
       avatarUrl: typeof payload.picture === "string" ? payload.picture : null,
+      authMethod: resolveAuthMethod(payload.am, subjectId),
     };
   } catch {
     return null;

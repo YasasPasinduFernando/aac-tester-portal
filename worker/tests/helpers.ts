@@ -10,7 +10,7 @@ export class MemoryStore implements Store {
   }
 
   async getTesterBySubject(subjectId: string): Promise<TesterRecord | null> {
-    if (!subjectId) return null;
+    if (!subjectId || subjectId.startsWith("email:")) return null;
     return [...this.testers.values()].find((row) => row.google_subject_id === subjectId) ?? null;
   }
 
@@ -35,6 +35,8 @@ export class MemoryStore implements Store {
       display_name: record.display_name ?? existing.display_name,
       avatar_url: record.avatar_url ?? existing.avatar_url,
       authenticated_at: existing.authenticated_at ?? record.authenticated_at,
+      signup_method:
+        record.signup_method === "google" || existing.signup_method === "google" ? "google" : "email",
     });
   }
 
@@ -69,6 +71,10 @@ export class MemoryStore implements Store {
     return this.feedback.length;
   }
 
+  async listFeedback(): Promise<FeedbackRecord[]> {
+    return [...this.feedback].sort((a, b) => b.created_at.localeCompare(a.created_at));
+  }
+
   async adminStats(): Promise<AdminStats> {
     const testers = [...this.testers.values()];
     return {
@@ -81,6 +87,8 @@ export class MemoryStore implements Store {
       verifiedMemberships: testers.filter((row) => row.membership_verified === 1).length,
       needsAttention: testers.filter((row) => row.status === "needs_attention").length,
       feedbackCount: this.feedback.length,
+      googleSignups: testers.filter((row) => row.signup_method === "google").length,
+      emailSignups: testers.filter((row) => row.signup_method !== "google").length,
     };
   }
 }

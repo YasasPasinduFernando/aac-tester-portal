@@ -22,6 +22,7 @@ function tester(patch: Partial<TesterRecord>): TesterRecord {
     display_name: null,
     avatar_url: null,
     authenticated_at: null,
+    signup_method: "email",
     ...patch,
   };
 }

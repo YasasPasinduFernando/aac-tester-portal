@@ -24,6 +24,7 @@ describe("feedback submission", () => {
       display_name: null,
       avatar_url: null,
       authenticated_at: null,
+      signup_method: "email",
     });
     const result = await submitFeedback({
       data: {

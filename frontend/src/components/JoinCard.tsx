@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { playStepsUnlocked } from "@shared/types";
 import { useAuth } from "../auth";
 import { useT } from "../locale";
@@ -9,11 +9,13 @@ import GroupJoinModal from "./GroupJoinModal";
 
 export default function JoinCard() {
   const t = useT();
-  const { ready, user, refresh, switchAccount } = useAuth();
+  const { ready, user, refresh, switchAccount, signInWithEmail, playStoreUrl, error } = useAuth();
   const [checking, setChecking] = useState(false);
   const [checkState, setCheckState] = useState<"verified" | "not_member" | "unavailable" | null>(null);
   const [openedGroup, setOpenedGroup] = useState(false);
   const [showGroupHelp, setShowGroupHelp] = useState(false);
+  const [email, setEmail] = useState("");
+  const [emailBusy, setEmailBusy] = useState(false);
   const joinGroupButtonRef = useRef<HTMLButtonElement>(null);
   const checkAccessRef = useRef<HTMLDivElement>(null);
 
@@ -70,9 +72,19 @@ export default function JoinCard() {
     window.open(user.playJoinUrl, "_blank", "noopener,noreferrer");
   }
 
-  function openInstall() {
-    if (!user?.playStoreUrl) return;
-    window.open(user.playStoreUrl, "_blank", "noopener,noreferrer");
+  function openPublicStore() {
+    if (!playStoreUrl) return;
+    window.open(playStoreUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function submitEmail(event: FormEvent) {
+    event.preventDefault();
+    setEmailBusy(true);
+    try {
+      await signInWithEmail(email);
+    } finally {
+      setEmailBusy(false);
+    }
   }
 
   const verified = Boolean(user?.membershipVerified);
@@ -97,12 +109,49 @@ export default function JoinCard() {
         ) : !user ? (
           <>
             <ol className="mb-4 space-y-1 text-sm text-ink/80">
-              <li>1. {t.continueWithGoogle}</li>
+              <li>1. {t.continueWithGoogle} / {t.registerWithEmail}</li>
               <li>2. {t.joinTesterGroup}</li>
               <li>3. {t.joinPlayAndInstall}</li>
             </ol>
             <p className="text-center text-sm font-semibold text-ink">{t.sameAccountGroupsAndPlay}</p>
             <GoogleSignIn />
+            <p className="mt-4 text-center text-xs font-semibold uppercase tracking-wide text-ink/50">{t.orRegisterEmail}</p>
+            <form className="mt-3 space-y-3" onSubmit={(event) => void submitEmail(event)}>
+              <label className="block text-sm font-semibold text-ink">
+                {t.playStoreEmailLabel}
+                <input
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  className="mt-1 min-h-12 w-full rounded-2xl border border-ink/15 bg-white px-4 text-base font-normal"
+                  placeholder="name@gmail.com"
+                />
+              </label>
+              {error ? (
+                <p className="text-sm text-clay-dark" role="alert">
+                  {error}
+                </p>
+              ) : null}
+              <button
+                type="submit"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-full border-2 border-ink/15 bg-white px-5 font-semibold text-ink disabled:opacity-60"
+                disabled={emailBusy}
+              >
+                {emailBusy ? t.loading : t.registerWithEmail}
+              </button>
+            </form>
+            {playStoreUrl ? (
+              <button
+                type="button"
+                className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-clay px-5 font-semibold text-white"
+                onClick={openPublicStore}
+              >
+                {t.getOnGooglePlay}
+                <span aria-hidden="true">↗</span>
+              </button>
+            ) : null}
           </>
         ) : (
           <div className="space-y-4">
@@ -110,6 +159,7 @@ export default function JoinCard() {
               email={user.email}
               displayName={user.displayName}
               avatarUrl={user.avatarUrl}
+              authMethod={user.authMethod}
               onSwitch={() => void switchAccount()}
             />
             <ol className="grid grid-cols-3 gap-1" aria-label={t.onboardingSteps}>
@@ -211,10 +261,23 @@ export default function JoinCard() {
                   <button
                     type="button"
                     className="mt-3 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full border-2 border-ink/15 bg-white px-5 text-base font-semibold text-ink"
-                    onClick={openInstall}
+                    onClick={() => {
+                      if (!user.playStoreUrl) return;
+                      window.open(user.playStoreUrl, "_blank", "noopener,noreferrer");
+                    }}
                     aria-label={t.installAria}
                   >
                     {t.installApp}
+                    <span aria-hidden="true">↗</span>
+                  </button>
+                ) : playStoreUrl ? (
+                  <button
+                    type="button"
+                    className="mt-3 inline-flex min-h-14 w-full touch-manipulation items-center justify-center gap-2 rounded-full border-2 border-ink/15 bg-white px-5 text-base font-semibold text-ink"
+                    onClick={openPublicStore}
+                    aria-label={t.installAria}
+                  >
+                    {t.getOnGooglePlay}
                     <span aria-hidden="true">↗</span>
                   </button>
                 ) : null}
@@ -229,6 +292,18 @@ export default function JoinCard() {
           </div>
         )}
       </div>
+
+      {playStoreUrl ? (
+        <p className="mt-4 text-center">
+          <button
+            type="button"
+            className="text-sm font-semibold text-clay"
+            onClick={openPublicStore}
+          >
+            {t.getOnGooglePlay} ↗
+          </button>
+        </p>
+      ) : null}
 
       {user ? (
         <GroupJoinModal

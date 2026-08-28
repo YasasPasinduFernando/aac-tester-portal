@@ -1,6 +1,8 @@
 import { AppPhoneCluster } from "../components/AppScreenCards";
+import ContactCard from "../components/ContactCard";
 import FieldCards from "../components/FieldCards";
 import JoinCard from "../components/JoinCard";
+import QrCard from "../components/QrCard";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
 import { useT } from "../locale";
@@ -21,6 +23,8 @@ export default function HomePage() {
       </section>
       <div className="mx-auto max-w-3xl px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <FieldCards />
+        <QrCard />
+        <ContactCard />
       </div>
       <SiteFooter />
     </div>

@@ -44,4 +44,24 @@ describe("admin authentication", () => {
     expect(stats.pendingGroupJoins).toBe(1);
     expect(stats.feedbackCount).toBe(0);
   });
+
+  it("lists feedback messages for admin without screenshot bytes", async () => {
+    const store = new MemoryStore();
+    await store.insertFeedback({
+      id: "fb-1",
+      email: "tester@example.com",
+      feedback_type: "Bug",
+      message: "The back button is too small on my phone.",
+      screenshot_key: "feedback/abc",
+      created_at: "2026-08-24T10:00:00.000Z",
+    });
+    const rows = await store.listFeedback();
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.message).toContain("back button");
+    expect(rows[0]?.screenshot_key).toBe("feedback/abc");
+    const stats = await store.adminStats();
+    expect(stats.feedbackCount).toBe(1);
+    expect(stats.emailSignups).toBe(0);
+    expect(stats.googleSignups).toBe(0);
+  });
 });

@@ -14,17 +14,20 @@ export function VerifiedAccountCard({
   email,
   displayName,
   avatarUrl,
+  authMethod = "google",
   onSwitch,
 }: {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
+  authMethod?: "google" | "email";
   onSwitch: () => void;
 }) {
   const t = useT();
+  const verifiedLabel = authMethod === "email" ? t.emailRegistered : t.googleVerified;
   return (
     <div className="rounded-2xl border border-teal/25 bg-foam px-4 py-3">
-      <p className="text-sm font-semibold text-teal-dark">✓ {t.googleVerified}</p>
+      <p className="text-sm font-semibold text-teal-dark">✓ {verifiedLabel}</p>
       <div className="mt-2 flex items-center gap-3">
         {avatarUrl ? (
           <img

@@ -19,6 +19,7 @@ export interface TesterRecord {
   display_name: string | null;
   avatar_url: string | null;
   authenticated_at: string | null;
+  signup_method: "google" | "email";
 }
 
 export interface FeedbackRecord {
@@ -38,6 +39,8 @@ export interface AdminStats {
   verifiedMemberships: number;
   needsAttention: number;
   feedbackCount: number;
+  googleSignups: number;
+  emailSignups: number;
 }
 
 export interface Store {
@@ -49,6 +52,7 @@ export interface Store {
   insertFeedback(record: FeedbackRecord): Promise<void>;
   countFeedbackByEmailSince(email: string, sinceIso: string): Promise<number>;
   countFeedback(): Promise<number>;
+  listFeedback(): Promise<FeedbackRecord[]>;
   adminStats(): Promise<AdminStats>;
 }
 
@@ -77,6 +81,7 @@ export function emptyTester(email: string, now: Date): TesterRecord {
     display_name: null,
     avatar_url: null,
     authenticated_at: null,
+    signup_method: "email",
   };
 }
 
@@ -102,7 +107,7 @@ export function d1Store(db: D1Database): Store {
     },
 
     async getTesterBySubject(subjectId) {
-      if (!subjectId) return null;
+      if (!subjectId || subjectId.startsWith("email:")) return null;
       return db
         .prepare("SELECT * FROM tester_requests WHERE google_subject_id = ?")
         .bind(subjectId)
@@ -116,8 +121,9 @@ export function d1Store(db: D1Database): Store {
             id, email, status, requested_at, group_join_started_at, play_join_started_at,
             feedback_submitted, last_activity_at, created_at, updated_at,
             membership_verified, membership_verified_at, notes,
-            google_email, google_subject_id, display_name, avatar_url, authenticated_at
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            google_email, google_subject_id, display_name, avatar_url, authenticated_at,
+            signup_method
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           ON CONFLICT(email) DO UPDATE SET
             status = excluded.status,
             group_join_started_at = COALESCE(tester_requests.group_join_started_at, excluded.group_join_started_at),
@@ -132,7 +138,11 @@ export function d1Store(db: D1Database): Store {
             google_subject_id = COALESCE(excluded.google_subject_id, tester_requests.google_subject_id),
             display_name = COALESCE(excluded.display_name, tester_requests.display_name),
             avatar_url = COALESCE(excluded.avatar_url, tester_requests.avatar_url),
-            authenticated_at = COALESCE(tester_requests.authenticated_at, excluded.authenticated_at)`,
+            authenticated_at = COALESCE(tester_requests.authenticated_at, excluded.authenticated_at),
+            signup_method = CASE
+              WHEN excluded.signup_method = 'google' OR tester_requests.signup_method = 'google' THEN 'google'
+              ELSE 'email'
+            END`
         )
         .bind(
           record.id,
@@ -153,6 +163,7 @@ export function d1Store(db: D1Database): Store {
           record.display_name,
           record.avatar_url,
           record.authenticated_at,
+          record.signup_method,
         )
         .run();
     },
@@ -177,7 +188,7 @@ export function d1Store(db: D1Database): Store {
             feedback_submitted = ?, last_activity_at = ?, updated_at = ?,
             membership_verified = ?, membership_verified_at = ?, notes = ?,
             google_email = ?, google_subject_id = ?, display_name = ?,
-            avatar_url = ?, authenticated_at = ?
+            avatar_url = ?, authenticated_at = ?, signup_method = ?
            WHERE email = ?`,
         )
         .bind(
@@ -195,6 +206,7 @@ export function d1Store(db: D1Database): Store {
           next.display_name,
           next.avatar_url,
           next.authenticated_at,
+          next.signup_method,
           email,
         )
         .run();
@@ -241,6 +253,13 @@ export function d1Store(db: D1Database): Store {
       return row?.count ?? 0;
     },
 
+    async listFeedback() {
+      const result = await db
+        .prepare("SELECT * FROM feedback ORDER BY created_at DESC LIMIT 200")
+        .all<FeedbackRecord>();
+      return result.results ?? [];
+    },
+
     async adminStats() {
       const counts = await db
         .prepare(
@@ -250,7 +269,9 @@ export function d1Store(db: D1Database): Store {
             SUM(CASE WHEN play_join_started_at IS NULL THEN 1 ELSE 0 END) as pendingPlayJoins,
             SUM(CASE WHEN group_join_started_at IS NOT NULL AND play_join_started_at IS NOT NULL THEN 1 ELSE 0 END) as completedOnboardingFlows,
             SUM(CASE WHEN membership_verified = 1 THEN 1 ELSE 0 END) as verifiedMemberships,
-            SUM(CASE WHEN status = 'needs_attention' THEN 1 ELSE 0 END) as needsAttention
+            SUM(CASE WHEN status = 'needs_attention' THEN 1 ELSE 0 END) as needsAttention,
+            SUM(CASE WHEN signup_method = 'google' THEN 1 ELSE 0 END) as googleSignups,
+            SUM(CASE WHEN signup_method = 'email' THEN 1 ELSE 0 END) as emailSignups
            FROM tester_requests`,
         )
         .first<{
@@ -260,6 +281,8 @@ export function d1Store(db: D1Database): Store {
           completedOnboardingFlows: number;
           verifiedMemberships: number;
           needsAttention: number;
+          googleSignups: number;
+          emailSignups: number;
         }>();
 
       return {
@@ -270,6 +293,8 @@ export function d1Store(db: D1Database): Store {
         verifiedMemberships: counts?.verifiedMemberships ?? 0,
         needsAttention: counts?.needsAttention ?? 0,
         feedbackCount: await this.countFeedback(),
+        googleSignups: counts?.googleSignups ?? 0,
+        emailSignups: counts?.emailSignups ?? 0,
       };
     },
   };

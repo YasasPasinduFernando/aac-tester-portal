@@ -81,6 +81,7 @@ export async function requestAccess(input: {
     display_name: google?.displayName ?? existing?.display_name ?? null,
     avatar_url: google?.avatarUrl ?? existing?.avatar_url ?? null,
     authenticated_at: google ? (existing?.authenticated_at ?? iso) : existing?.authenticated_at ?? null,
+    signup_method: google || existing?.signup_method === "google" ? "google" : "email",
   });
 
   await input.store.upsertTester(record);

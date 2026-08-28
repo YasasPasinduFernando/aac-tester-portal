@@ -3,6 +3,7 @@ import {
   authConfig,
   currentAuth,
   requireTesterSession,
+  signInWithEmail,
   signInWithGoogle,
   signOut,
   toClientPayload,
@@ -17,6 +18,7 @@ import { corsHeaders, hashIp, isAllowedOrigin, rejectCsrf, requestOrigin } from 
 import { d1Store } from "./store";
 import { recordJoinEvent, requestAccess, checkAccess } from "./testers";
 import { playStepsUnlocked } from "../../shared/types";
+import { resolveAuthMethod } from "./google-auth";
 
 const MAX_JSON_BYTES = 32_768;
 
@@ -57,6 +59,25 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
           await signInWithGoogle({
             credential: body.credential,
             nonce: body.nonce,
+            env,
+            store: d1Store(env.DB),
+            rateLimit: d1RateLimitStore(env.DB),
+            ipHash: await hashIp(env, request),
+            now: new Date(),
+            request,
+          }),
+          cors,
+        );
+      } catch {
+        return jsonResponse({ ok: false, message: "Please try again in a moment." }, { status: 503, headers: cors });
+      }
+    }
+    if (url.pathname === "/api/auth/email" && request.method === "POST") {
+      try {
+        const body = await readJson(request);
+        return withCors(
+          await signInWithEmail({
+            email: body.email,
             env,
             store: d1Store(env.DB),
             rateLimit: d1RateLimitStore(env.DB),
@@ -112,6 +133,9 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     }
     if (url.pathname === "/api/admin/stats" && request.method === "GET") {
       return withCors(await handleAdminStats(request, env), cors);
+    }
+    if (url.pathname === "/api/admin/feedback" && request.method === "GET") {
+      return withCors(await handleAdminFeedback(request, env), cors);
     }
     if (url.pathname === "/api/admin/export.csv" && request.method === "GET") {
       return withCors(await handleAdminExport(request, env), cors);
@@ -194,12 +218,14 @@ async function handleTesterRequest(request: Request, env: Env): Promise<Response
     playJoinUrl: playJoinUrl(env),
     playStoreUrl: playStoreUrl(env),
     membershipVerified,
-    google: {
-      email: session.email,
-      subjectId: session.subjectId,
-      displayName: session.displayName,
-      avatarUrl: session.avatarUrl,
-    },
+    google: resolveAuthMethod(session.authMethod, session.subjectId) === "google"
+      ? {
+          email: session.email,
+          subjectId: session.subjectId,
+          displayName: session.displayName,
+          avatarUrl: session.avatarUrl,
+        }
+      : undefined,
   });
   const status =
     result.outcome === "invalid_email" ? 400 : result.outcome === "rate_limited" ? 429 : 200;
@@ -329,7 +355,8 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     play_join_started_at: row.play_join_started_at,
     feedback_submitted: row.feedback_submitted,
     membership_verified: row.membership_verified,
-    authenticated: Boolean(row.authenticated_at),
+    signup_method: row.signup_method === "google" ? "google" : "email",
+    authenticated: Boolean(row.google_subject_id),
     authenticated_at: row.authenticated_at,
     display_name: row.display_name,
   }));
@@ -337,6 +364,25 @@ async function handleAdminStats(request: Request, env: Env): Promise<Response> {
     admin: identity.email,
     stats,
     testers,
+  });
+}
+
+async function handleAdminFeedback(request: Request, env: Env): Promise<Response> {
+  const identity = await requireAdmin(request, env);
+  if (!identity) {
+    return jsonResponse({ error: "unauthorized" }, { status: 401 });
+  }
+  const rows = await d1Store(env.DB).listFeedback();
+  return jsonResponse({
+    admin: identity.email,
+    feedback: rows.map((row) => ({
+      id: row.id,
+      email: row.email,
+      feedback_type: row.feedback_type,
+      message: row.message,
+      created_at: row.created_at,
+      screenshotAttached: Boolean(row.screenshot_key),
+    })),
   });
 }
 
@@ -348,6 +394,7 @@ async function handleAdminExport(request: Request, env: Env): Promise<Response> 
   const testers = await d1Store(env.DB).listTesters();
   const header = [
     "email",
+    "signup_method",
     "authenticated",
     "status",
     "requested_at",
@@ -362,7 +409,8 @@ async function handleAdminExport(request: Request, env: Env): Promise<Response> 
     ...testers.map((row) =>
       [
         csv(row.email),
-        row.authenticated_at ? "yes" : "no",
+        csv(row.signup_method === "google" ? "google" : "email"),
+        row.google_subject_id ? "yes" : "no",
         csv(row.status),
         csv(row.requested_at),
         csv(row.group_join_started_at ?? ""),

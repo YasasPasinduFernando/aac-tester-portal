@@ -1,12 +1,15 @@
 import { playStepsUnlocked, USER_MESSAGES } from "../../shared/types";
+import { parseEmailInput } from "../../shared/email";
 import type { Env } from "./env";
 import { playJoinUrl, playStoreUrl } from "./env";
 import {
   clearSessionCookieHeader,
   createSessionToken,
+  emailSessionSubject,
   sessionCookieHeader,
   sessionFromRequest,
   verifyGoogleIdToken,
+  type AuthMethod,
   type GoogleIdentity,
   type PortalSession,
 } from "./google-auth";
@@ -20,6 +23,7 @@ const AUTH_WINDOW_MS = 15 * 60 * 1000;
 
 export interface AuthClientPayload {
   authenticated: boolean;
+  authMethod: "google" | "email" | null;
   email: string | null;
   displayName: string | null;
   avatarUrl: string | null;
@@ -35,9 +39,17 @@ export interface AuthClientPayload {
   message?: string;
 }
 
-export function authConfig(env: Env): { googleClientId: string | null; configured: boolean } {
+export function authConfig(env: Env): {
+  googleClientId: string | null;
+  configured: boolean;
+  playStoreUrl: string | null;
+} {
   const googleClientId = env.GOOGLE_CLIENT_ID?.trim() || null;
-  return { googleClientId, configured: Boolean(googleClientId && env.SESSION_SECRET) };
+  return {
+    googleClientId,
+    configured: Boolean(googleClientId && env.SESSION_SECRET),
+    playStoreUrl: playStoreUrl(env),
+  };
 }
 
 export async function signInWithGoogle(input: {
@@ -110,13 +122,83 @@ export async function signInWithGoogle(input: {
       subjectId: identity.subjectId,
       displayName: identity.displayName,
       avatarUrl: identity.avatarUrl,
+      authMethod: "google",
     },
     input.env.SESSION_SECRET,
     input.now,
   );
   const secure = new URL(input.request.url).protocol === "https:";
   return jsonResponse(
-    { ok: true, ...toClientPayload(identity, access) },
+    { ok: true, ...toClientPayload({ ...identity, authMethod: "google" }, access) },
+    { headers: { "Set-Cookie": sessionCookieHeader(token, secure) } },
+  );
+}
+
+export async function signInWithEmail(input: {
+  email: unknown;
+  env: Env;
+  store: Store;
+  rateLimit: RateLimitStore;
+  ipHash: string;
+  now: Date;
+  request: Request;
+}): Promise<Response> {
+  if (!input.env.SESSION_SECRET) {
+    return jsonResponse(
+      { ok: false, error: "unavailable", message: USER_MESSAGES.googleSignInUnavailable },
+      { status: 503 },
+    );
+  }
+
+  const allowed = await input.rateLimit.consume(
+    `auth-email:${input.ipHash}`,
+    AUTH_LIMIT,
+    AUTH_WINDOW_MS,
+    input.now.getTime(),
+  );
+  if (!allowed) {
+    return jsonResponse(
+      { ok: false, error: "rate_limited", message: USER_MESSAGES.rateLimited },
+      { status: 429 },
+    );
+  }
+
+  const access = await requestAccess({
+    email: input.email,
+    ipHash: input.ipHash,
+    now: input.now,
+    store: input.store,
+    rateLimit: input.rateLimit,
+    groupEmail: input.env.GOOGLE_GROUP_EMAIL,
+    groupJoinUrl: input.env.GOOGLE_GROUP_JOIN_URL,
+    playJoinUrl: playJoinUrl(input.env),
+    playStoreUrl: playStoreUrl(input.env),
+    skipRateLimit: true,
+  });
+  if (access.outcome === "invalid_email") {
+    return jsonResponse({ ok: false, error: "invalid_email", message: access.message }, { status: 400 });
+  }
+  if (access.outcome === "rate_limited") {
+    return jsonResponse({ ok: false, error: "rate_limited", message: access.message }, { status: 429 });
+  }
+  const email = parseEmailInput(input.email);
+  if (!email) {
+    return jsonResponse({ ok: false, error: "invalid_email", message: USER_MESSAGES.invalidEmail }, { status: 400 });
+  }
+  const token = await createSessionToken(
+    {
+      email,
+      subjectId: emailSessionSubject(email),
+      displayName: null,
+      avatarUrl: null,
+      authMethod: "email",
+    },
+    input.env.SESSION_SECRET,
+    input.now,
+  );
+  const secure = new URL(input.request.url).protocol === "https:";
+  return jsonResponse(
+    { ok: true, ...toClientPayload({ email, displayName: null, avatarUrl: null, authMethod: "email" }, access) },
     { headers: { "Set-Cookie": sessionCookieHeader(token, secure) } },
   );
 }
@@ -178,7 +260,7 @@ function accessFromRecord(record: TesterRecord | null, env: Env): AccessResult {
 }
 
 export function toClientPayload(
-  identity: Pick<GoogleIdentity, "email" | "displayName" | "avatarUrl">,
+  identity: Pick<GoogleIdentity, "email" | "displayName" | "avatarUrl"> & { authMethod?: AuthMethod },
   access: AccessResult,
 ): AuthClientPayload {
   const play = playStepsUnlocked(access.membershipVerified)
@@ -186,6 +268,7 @@ export function toClientPayload(
     : { playJoinUrl: null, playStoreUrl: null };
   return {
     authenticated: true,
+    authMethod: identity.authMethod ?? "google",
     email: identity.email,
     displayName: identity.displayName,
     avatarUrl: identity.avatarUrl,
@@ -203,6 +286,7 @@ export function toClientPayload(
 export function emptyClientPayload(): AuthClientPayload {
   return {
     authenticated: false,
+    authMethod: null,
     email: null,
     displayName: null,
     avatarUrl: null,

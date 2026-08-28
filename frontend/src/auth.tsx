@@ -5,6 +5,7 @@ export interface AuthUser {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
+  authMethod: "google" | "email";
   membershipVerified: boolean;
   membershipVerification: MembershipVerification | null;
   status: TesterStatus | null;
@@ -18,6 +19,7 @@ export interface AuthUser {
 interface AuthResponse {
   ok?: boolean;
   authenticated?: boolean;
+  authMethod?: "google" | "email" | null;
   email?: string | null;
   displayName?: string | null;
   avatarUrl?: string | null;
@@ -40,8 +42,10 @@ interface AuthContextValue {
   user: AuthUser | null;
   googleClientId: string | null;
   configured: boolean;
+  playStoreUrl: string | null;
   error: string;
   signInWithCredential: (credential: string, nonce?: string) => Promise<boolean>;
+  signInWithEmail: (email: string) => Promise<boolean>;
   refresh: () => Promise<void>;
   signOut: () => Promise<void>;
   switchAccount: () => Promise<void>;
@@ -57,6 +61,7 @@ function userFromPayload(payload: AuthResponse): AuthUser | null {
     email: payload.email,
     displayName: payload.displayName ?? null,
     avatarUrl: payload.avatarUrl ?? null,
+    authMethod: payload.authMethod === "email" ? "email" : "google",
     membershipVerified: payload.membershipVerified === true,
     membershipVerification: payload.membershipVerification ?? null,
     status: payload.status ?? null,
@@ -73,12 +78,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [googleClientId, setGoogleClientId] = useState<string | null>(null);
   const [configured, setConfigured] = useState(false);
+  const [playStoreUrl, setPlayStoreUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [loadToken, setLoadToken] = useState(0);
 
   const applyPayload = useCallback((config: AuthResponse, me: AuthResponse) => {
     setGoogleClientId(config.googleClientId ?? null);
     setConfigured(config.configured === true);
+    setPlayStoreUrl(config.playStoreUrl ?? null);
     setUser(userFromPayload(me));
   }, []);
 
@@ -133,6 +140,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const signInWithEmail = useCallback(async (email: string) => {
+    setError("");
+    try {
+      const response = await fetch("/api/auth/email", {
+        method: "POST",
+        credentials: "include",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      const payload = (await response.json()) as AuthResponse;
+      if (!response.ok || payload.authenticated === false) {
+        setError(payload.message || USER_MESSAGES.invalidEmail);
+        setUser(null);
+        return false;
+      }
+      setUser(userFromPayload(payload));
+      return true;
+    } catch {
+      setError(USER_MESSAGES.googleSignInFailed);
+      return false;
+    }
+  }, []);
+
   const signOut = useCallback(async () => {
     setError("");
     await fetch("/api/auth/logout", {
@@ -154,13 +184,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       googleClientId,
       configured,
+      playStoreUrl,
       error,
       signInWithCredential,
+      signInWithEmail,
       refresh,
       signOut,
       switchAccount,
     }),
-    [ready, user, googleClientId, configured, error, signInWithCredential, refresh, signOut, switchAccount],
+    [
+      ready,
+      user,
+      googleClientId,
+      configured,
+      playStoreUrl,
+      error,
+      signInWithCredential,
+      signInWithEmail,
+      refresh,
+      signOut,
+      switchAccount,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,6 +1,6 @@
 import { createLocalJWKSet, exportJWK, generateKeyPair, SignJWT } from "jose";
 import { describe, expect, it } from "vitest";
-import { signInWithGoogle, signOut, toClientPayload } from "../src/auth";
+import { authConfig, signInWithEmail, signInWithGoogle, signOut, toClientPayload } from "../src/auth";
 import type { Env } from "../src/env";
 import {
   clearSessionCookieHeader,
@@ -130,6 +130,7 @@ describe("portal session", () => {
     const session = await readSessionToken(token, SESSION_SECRET);
     expect(session?.email).toBe("kamal123@gmail.com");
     expect(session?.subjectId).toBe("google-sub-1");
+    expect(session?.authMethod).toBe("google");
     const header = sessionCookieHeader(token, true);
     expect(header).toContain("HttpOnly");
     expect(header).toContain("SameSite=Lax");
@@ -188,6 +189,7 @@ describe("authenticated tester records", () => {
     expect(row?.google_subject_id).toBe("google-sub-1");
     expect(row?.authenticated_at).toBeTruthy();
     expect(row?.status).toBe("requested");
+    expect(row?.signup_method).toBe("google");
   });
 
   it("upserts a duplicate authenticated account", async () => {
@@ -318,3 +320,89 @@ describe("Play and install visibility", () => {
     expect(result.status).not.toBe("completed");
   });
 });
+
+describe("email registration", () => {
+  it("creates an email tester session without Google identity", async () => {
+    const store = new MemoryStore();
+    const response = await signInWithEmail({
+      email: "nimal@gmail.com",
+      env: env(),
+      store,
+      rateLimit: new MemoryRateLimitStore(),
+      ipHash: "ip-email",
+      now: new Date("2026-08-24T13:00:00.000Z"),
+      request: new Request("https://aac.yasaboy.com/api/auth/email", { method: "POST" }),
+    });
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      authenticated: boolean;
+      authMethod: string;
+      email: string;
+      playJoinUrl: string | null;
+    };
+    expect(body.authenticated).toBe(true);
+    expect(body.authMethod).toBe("email");
+    expect(body.email).toBe("nimal@gmail.com");
+    expect(body.playJoinUrl).toBeNull();
+    const row = store.testers.get("nimal@gmail.com");
+    expect(row?.signup_method).toBe("email");
+    expect(row?.google_subject_id).toBeNull();
+    expect(row?.authenticated_at).toBeNull();
+    expect(authConfig(env()).playStoreUrl).toBe(STORE);
+  });
+
+  it("upgrades an email row when the same account later uses Google Sign-In", async () => {
+    const store = new MemoryStore();
+    await requestAccess({
+      email: "nimal@gmail.com",
+      ipHash: "ip",
+      now: new Date("2026-08-24T13:00:00.000Z"),
+      store,
+      rateLimit: new MemoryRateLimitStore(),
+      groupEmail: "aac-sinhala-testers@googlegroups.com",
+      groupJoinUrl: GROUP,
+      playJoinUrl: PLAY,
+      playStoreUrl: STORE,
+    });
+    expect(store.testers.get("nimal@gmail.com")?.signup_method).toBe("email");
+    await requestAccess({
+      email: "nimal@gmail.com",
+      ipHash: "ip",
+      now: new Date("2026-08-24T13:02:00.000Z"),
+      store,
+      rateLimit: new MemoryRateLimitStore(),
+      groupEmail: "aac-sinhala-testers@googlegroups.com",
+      groupJoinUrl: GROUP,
+      playJoinUrl: PLAY,
+      playStoreUrl: STORE,
+      google: {
+        email: "nimal@gmail.com",
+        subjectId: "google-sub-nimal",
+        displayName: "Nimal",
+        avatarUrl: null,
+      },
+    });
+    const row = store.testers.get("nimal@gmail.com");
+    expect(store.testers.size).toBe(1);
+    expect(row?.signup_method).toBe("google");
+    expect(row?.google_subject_id).toBe("google-sub-nimal");
+    expect(row?.membership_verified).toBe(0);
+  });
+
+  it("stores email authMethod on the session cookie", async () => {
+    const token = await createSessionToken(
+      {
+        email: "nimal@gmail.com",
+        subjectId: "email:nimal@gmail.com",
+        displayName: null,
+        avatarUrl: null,
+        authMethod: "email",
+      },
+      SESSION_SECRET,
+    );
+    const session = await readSessionToken(token, SESSION_SECRET);
+    expect(session?.authMethod).toBe("email");
+    expect(session?.subjectId).toBe("email:nimal@gmail.com");
+  });
+});
+
