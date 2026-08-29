@@ -14,6 +14,7 @@ export default function AssistantHost() {
         className="assistant-fab"
         aria-expanded={open}
         aria-controls="assistant-title"
+        aria-label={open ? t.chatClose : t.chatTitle}
         onClick={() => setOpen((value) => !value)}
       >
         {open ? t.chatClose : t.chatTitle}

@@ -80,7 +80,7 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
   return (
     <div className="assistant-panel glass" role="dialog" aria-labelledby="assistant-title">
       <div className="flex items-start gap-3 border-b border-ink/10 p-3">
-        <div className="assistant-stage h-28 w-24 shrink-0 overflow-hidden rounded-2xl bg-mist/70">
+        <div className="assistant-stage relative h-28 w-[6.75rem] shrink-0 overflow-hidden rounded-2xl bg-mist/70">
           {webgl ? (
             <Suspense fallback={<div className="h-full w-full bg-mist" />}>
               <AvatarScene mood={mood} />
@@ -88,6 +88,9 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
           ) : (
             <img src="/aac-logo.png" alt="" className="h-full w-full object-contain p-3" />
           )}
+          <p className="pointer-events-none absolute inset-x-0 bottom-1 z-10 px-1 text-center text-[10px] font-bold leading-tight text-ink">
+            {t.chatTitle}
+          </p>
         </div>
         <div className="min-w-0 flex-1">
           <h2 id="assistant-title" className="text-base font-semibold text-ink">
@@ -112,7 +115,7 @@ export default function AssistantPanel({ onClose }: { onClose: () => void }) {
               message.role === "user" ? "ml-auto bg-clay text-white" : "bg-foam text-ink"
             }`}
           >
-            <p>{message.text}</p>
+            <p>{message.id === "hello" ? t.chatWelcome : message.text}</p>
             {message.href ? (
               message.href.startsWith("http") ? (
                 <a

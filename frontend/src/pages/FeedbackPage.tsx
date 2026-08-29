@@ -1,6 +1,7 @@
 import { useId, useState, type FormEvent } from "react";
 import { FEEDBACK_TYPES } from "@shared/types";
 import { isValidEmail, normalizeEmail } from "@shared/email";
+import { localizeApiMessage } from "@shared/ui-copy";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
 import { useAuth } from "../auth";
@@ -51,7 +52,7 @@ export default function FeedbackPage() {
       });
       const payload = (await response.json()) as { ok: boolean; message: string };
       if (!payload.ok) {
-        setError(payload.message || t.tryAgain);
+        setError(localizeApiMessage(payload.message, t) || t.tryAgain);
       } else {
         setSuccess(t.feedbackThanks);
         setMessage("");

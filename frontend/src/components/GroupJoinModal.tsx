@@ -109,7 +109,7 @@ export default function GroupJoinModal({ open, email, onClose, onOpenGroup }: Gr
           </div>
           <img
             src={GUIDE_SHOTS.joinGroup.src}
-            alt={GUIDE_SHOTS.joinGroup.alt}
+            alt={t.guideJoinAlt}
             className="mt-3 h-auto w-full rounded-xl bg-white"
           />
           <p className="mt-2 text-sm text-ink/70">{t.lookForJoinGroup}</p>

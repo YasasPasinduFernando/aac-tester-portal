@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "../locale";
 
 interface PhoneFrameProps {
   src: string;
@@ -16,6 +17,7 @@ export default function PhoneFrame({
   className = "",
   enlarge = true,
 }: PhoneFrameProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const titleId = useId();
   const width =
@@ -73,7 +75,7 @@ export default function PhoneFrame({
               type="button"
               className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/20 text-lg text-sand hover:bg-white/10"
               onClick={() => setOpen(false)}
-              aria-label="Close app screenshot"
+              aria-label={t.closeScreenshot}
             >
               ×
             </button>
@@ -91,7 +93,7 @@ export default function PhoneFrame({
         type="button"
         className="block self-end rounded-[2rem] text-left"
         onClick={() => setOpen(true)}
-        aria-label={`Enlarge app screenshot: ${alt}`}
+        aria-label={`${t.enlargeScreenshot}: ${alt}`}
       >
         {frame}
       </button>

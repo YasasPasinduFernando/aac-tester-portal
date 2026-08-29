@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { CASE_STUDY, type CaseStudyCopy } from "@shared/case-study-copy";
 import { isLocale, UI_COPY, type Locale, type UiCopy } from "@shared/ui-copy";
 
 const STORAGE_KEY = "aac-lang";
@@ -35,7 +36,11 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>(() => readStoredLocale());
 
   useEffect(() => {
+    const copy = UI_COPY[locale];
     document.documentElement.lang = locale;
+    document.title = copy.siteTitle;
+    const description = document.querySelector('meta[name="description"]');
+    if (description) description.setAttribute("content", copy.siteDescription);
     try {
       localStorage.setItem(STORAGE_KEY, locale);
     } catch {
@@ -65,4 +70,9 @@ export function useLocale(): LocaleContextValue {
   const value = useContext(LocaleContext);
   if (!value) throw new Error("useLocale must be used within LocaleProvider");
   return value;
+}
+
+export function useCaseStudy(): CaseStudyCopy {
+  const { locale } = useLocale();
+  return CASE_STUDY[locale];
 }

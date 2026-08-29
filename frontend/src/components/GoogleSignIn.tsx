@@ -122,7 +122,7 @@ export default function GoogleSignIn() {
           <div
             ref={hostRef}
             className="flex min-h-14 w-full justify-center overflow-hidden"
-            aria-label="Continue with Google"
+            aria-label={t.continueWithGoogleAria}
           />
         </div>
       )}

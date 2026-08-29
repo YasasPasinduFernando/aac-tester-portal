@@ -14,4 +14,11 @@ describe("UI copy locales", () => {
     expect(UI_COPY.si.googleVerified).not.toContain("පරීක්ෂක කණ්ඩායම");
     expect(UI_COPY.ta.googleVerified).not.toContain("சோதனையாளர் குழு");
   });
+
+  it("translates remaining chrome instead of falling back to English", () => {
+    expect(UI_COPY.si.siteTitle).not.toBe(UI_COPY.en.siteTitle);
+    expect(UI_COPY.ta.siteTitle).not.toBe(UI_COPY.en.siteTitle);
+    expect(UI_COPY.si.adminTitle).not.toBe(UI_COPY.en.adminTitle);
+    expect(UI_COPY.ta.invalidEmail).not.toBe(UI_COPY.en.invalidEmail);
+  });
 });

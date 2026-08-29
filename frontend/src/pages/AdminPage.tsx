@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import SiteFooter from "../components/SiteFooter";
 import SiteHeader from "../components/SiteHeader";
+import { useT } from "../locale";
 
 interface AdminPayload {
   error?: string;
@@ -53,6 +54,7 @@ function adminHeaders(): HeadersInit {
 }
 
 export default function AdminPage() {
+  const t = useT();
   const [data, setData] = useState<AdminPayload | null>(null);
   const [feedback, setFeedback] = useState<FeedbackPayload["feedback"]>([]);
   const [error, setError] = useState("");
@@ -70,20 +72,20 @@ export default function AdminPage() {
         const feedbackPayload = (await feedbackRes.json()) as FeedbackPayload;
         if (cancelled) return;
         if (!statsRes.ok) {
-          setError("Admin access is protected by Cloudflare Access.");
+          setError(t.adminProtected);
           return;
         }
         setData(payload);
         setFeedback(feedbackPayload.feedback ?? []);
       } catch {
-        if (!cancelled) setError("Admin access is protected by Cloudflare Access.");
+        if (!cancelled) setError(t.adminProtected);
       }
     }
     void load();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t.adminProtected]);
 
   async function exportCsv() {
     const response = await fetch("/api/admin/export.csv", { headers: adminHeaders() });
@@ -103,12 +105,8 @@ export default function AdminPage() {
       <main id="main" className="mx-auto max-w-6xl px-4 py-16">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="display text-5xl text-ink">Tester admin</h1>
-            <p className="mt-3 max-w-2xl text-ink/75">
-              Protected by Cloudflare Access. Emails stay on this page. Google Sign-In and typed
-              email both create tester rows. Link clicks are recorded events, not Google membership
-              or Play download proof.
-            </p>
+            <h1 className="display text-5xl text-ink">{t.adminTitle}</h1>
+            <p className="mt-3 max-w-2xl text-ink/75">{t.adminLead}</p>
           </div>
           {data?.stats ? (
             <button
@@ -116,7 +114,7 @@ export default function AdminPage() {
               className="rounded-full bg-ink px-5 py-3 font-semibold text-sand hover:bg-ink-soft"
               onClick={() => void exportCsv()}
             >
-              Export CSV
+              {t.adminExportCsv}
             </button>
           ) : null}
         </div>
@@ -127,48 +125,51 @@ export default function AdminPage() {
         ) : null}
         {data?.stats ? (
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Stat label="Total tester requests" value={data.stats.totalRequests} />
-            <Stat label="Google signups" value={data.stats.googleSignups} />
-            <Stat label="Email signups" value={data.stats.emailSignups} />
-            <Stat label="Feedback count" value={data.stats.feedbackCount} />
-            <Stat label="Pending group joins" value={data.stats.pendingGroupJoins} />
-            <Stat label="Pending Play joins" value={data.stats.pendingPlayJoins} />
-            <Stat label="Completed onboarding flows" value={data.stats.completedOnboardingFlows} />
-            <Stat label="Needs attention" value={data.stats.needsAttention} />
+            <Stat label={t.adminTotalRequests} value={data.stats.totalRequests} />
+            <Stat label={t.adminGoogleSignups} value={data.stats.googleSignups} />
+            <Stat label={t.adminEmailSignups} value={data.stats.emailSignups} />
+            <Stat label={t.adminFeedbackCount} value={data.stats.feedbackCount} />
+            <Stat label={t.adminPendingGroup} value={data.stats.pendingGroupJoins} />
+            <Stat label={t.adminPendingPlay} value={data.stats.pendingPlayJoins} />
+            <Stat label={t.adminCompletedFlows} value={data.stats.completedOnboardingFlows} />
+            <Stat label={t.adminNeedsAttention} value={data.stats.needsAttention} />
           </div>
         ) : null}
         {data?.stats ? (
           <p className="mt-4 text-sm text-ink/60">
-            Verified Google Group memberships: {data.stats.verifiedMemberships}. If this is 0,
-            membership verification is unavailable for the consumer group.
+            {t.adminVerifiedMemberships} {data.stats.verifiedMemberships}. {t.adminVerifiedHint}
           </p>
         ) : null}
         {data?.testers ? (
           <section className="mt-12 overflow-x-auto">
-            <h2 className="text-2xl font-semibold">Registrants</h2>
+            <h2 className="text-2xl font-semibold">{t.adminRegistrants}</h2>
             <table className="mt-4 min-w-full text-left text-sm">
-              <caption className="sr-only">Tester requests</caption>
+              <caption className="sr-only">{t.adminTesterRequests}</caption>
               <thead>
                 <tr className="border-b border-ink/15">
-                  <th className="py-3 pr-4">Email</th>
-                  <th className="py-3 pr-4">Signup</th>
-                  <th className="py-3 pr-4">Status</th>
-                  <th className="py-3 pr-4">Requested</th>
-                  <th className="py-3 pr-4">Last activity</th>
-                  <th className="py-3 pr-4">Group</th>
-                  <th className="py-3 pr-4">Membership</th>
+                  <th className="py-3 pr-4">{t.adminColEmail}</th>
+                  <th className="py-3 pr-4">{t.adminColSignup}</th>
+                  <th className="py-3 pr-4">{t.adminColStatus}</th>
+                  <th className="py-3 pr-4">{t.adminColRequested}</th>
+                  <th className="py-3 pr-4">{t.adminColLastActivity}</th>
+                  <th className="py-3 pr-4">{t.adminColGroup}</th>
+                  <th className="py-3 pr-4">{t.adminColMembership}</th>
                 </tr>
               </thead>
               <tbody>
                 {data.testers.map((row) => (
                   <tr key={row.email} className="border-b border-ink/10">
                     <td className="py-3 pr-4">{row.email}</td>
-                    <td className="py-3 pr-4">{row.signup_method === "google" ? "Google" : "Email"}</td>
+                    <td className="py-3 pr-4">
+                      {row.signup_method === "google" ? t.adminSignupGoogle : t.adminSignupEmail}
+                    </td>
                     <td className="py-3 pr-4">{row.status}</td>
                     <td className="py-3 pr-4">{row.requested_at}</td>
                     <td className="py-3 pr-4">{row.last_activity_at ?? "—"}</td>
-                    <td className="py-3 pr-4">{row.group_join_started_at ? "Opened" : "—"}</td>
-                    <td className="py-3 pr-4">{row.membership_verified ? "Verified" : "Not verified"}</td>
+                    <td className="py-3 pr-4">{row.group_join_started_at ? t.adminOpened : "—"}</td>
+                    <td className="py-3 pr-4">
+                      {row.membership_verified ? t.adminVerified : t.adminNotVerified}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -176,7 +177,7 @@ export default function AdminPage() {
           </section>
         ) : null}
         <section className="mt-12">
-          <h2 className="text-2xl font-semibold">Feedback</h2>
+          <h2 className="text-2xl font-semibold">{t.feedback}</h2>
           {feedback && feedback.length > 0 ? (
             <ul className="mt-4 space-y-4">
               {feedback.map((row) => (
@@ -187,13 +188,13 @@ export default function AdminPage() {
                   <p className="mt-1 text-xs text-ink/55">{row.created_at}</p>
                   <p className="mt-2 whitespace-pre-wrap text-sm text-ink/80">{row.message}</p>
                   {row.screenshotAttached ? (
-                    <p className="mt-2 text-xs font-semibold text-ink/60">Screenshot attached</p>
+                    <p className="mt-2 text-xs font-semibold text-ink/60">{t.adminScreenshotAttached}</p>
                   ) : null}
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="mt-3 text-sm text-ink/60">No feedback yet.</p>
+            <p className="mt-3 text-sm text-ink/60">{t.adminNoFeedback}</p>
           )}
         </section>
       </main>

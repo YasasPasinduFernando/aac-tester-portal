@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import { playStepsUnlocked } from "@shared/types";
+import { localizeApiMessage } from "@shared/ui-copy";
 import { useAuth } from "../auth";
 import { useT } from "../locale";
 import { AccountMismatchWarning, VerifiedAccountCard, WrongAccountHelp } from "./AccountWarning";
@@ -131,7 +132,7 @@ export default function JoinCard() {
               </label>
               {error ? (
                 <p className="text-sm text-clay-dark" role="alert">
-                  {error}
+                  {localizeApiMessage(error, t)}
                 </p>
               ) : null}
               <button

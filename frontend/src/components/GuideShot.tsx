@@ -1,5 +1,6 @@
 import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
+import { useT } from "../locale";
 
 interface GuideShotProps {
   src: string;
@@ -10,6 +11,7 @@ interface GuideShotProps {
 }
 
 export default function GuideShot({ src, alt, caption, hint, dark = false }: GuideShotProps) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   const titleId = useId();
 
@@ -48,7 +50,7 @@ export default function GuideShot({ src, alt, caption, hint, dark = false }: Gui
                 type="button"
                 className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/20 text-lg text-sand hover:bg-white/10"
                 onClick={() => setOpen(false)}
-                aria-label="Close screenshot"
+                aria-label={t.closeScreenshot}
               >
                 ×
               </button>
@@ -69,7 +71,7 @@ export default function GuideShot({ src, alt, caption, hint, dark = false }: Gui
           type="button"
           className="block w-full text-left"
           onClick={() => setOpen(true)}
-          aria-label={`Enlarge screenshot: ${caption}`}
+          aria-label={`${t.enlargeScreenshot}: ${caption}`}
         >
           <img
             src={src}
@@ -80,7 +82,7 @@ export default function GuideShot({ src, alt, caption, hint, dark = false }: Gui
         <figcaption className={`px-4 py-3 ${dark ? "text-sand" : "text-ink"}`}>
           <p className="text-sm font-semibold">{caption}</p>
           {hint ? <p className={`mt-1 text-sm ${dark ? "text-sand/75" : "text-ink/70"}`}>{hint}</p> : null}
-          <p className={`mt-1 text-xs ${dark ? "text-sand/55" : "text-ink/50"}`}>Tap the picture to enlarge</p>
+          <p className={`mt-1 text-xs ${dark ? "text-sand/55" : "text-ink/50"}`}>{t.tapToEnlarge}</p>
         </figcaption>
       </figure>
       {lightbox}
